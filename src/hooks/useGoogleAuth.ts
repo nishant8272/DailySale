@@ -1,13 +1,6 @@
 import { useCallback, useState } from "react";
-import {
-  continueWithGoogleApi,
-  onboardGoogleUserApi,
-} from "../services/auth.service";
-import type {
-  AuthUser,
-  OnboardingFormState,
-  ContinueGoogleResponse,
-} from "../types/auth.types";
+import { continueWithGoogleApi, onboardGoogleUserApi} from "../services/auth.service";
+import type { AuthUser, OnboardingFormState, ContinueGoogleResponse} from "../types/auth.types";
 
 const defaultFormState: OnboardingFormState = {
   name: "",
@@ -29,6 +22,7 @@ export function useGoogleAuth() {
   const [formState, setFormState] = useState<OnboardingFormState>(defaultFormState);
 
   const setError = useCallback((message: string) => {
+    console.log(message)
     setErrorText(message);
   }, []);
 
@@ -54,6 +48,7 @@ export function useGoogleAuth() {
       setNeedsOnboarding(false);
       setStatusText("Google sign-in successful");
     } catch (error) {
+      console.log(error)
       setErrorText(error instanceof Error ? error.message : "Google sign-in failed");
     } finally {
       setLoading(false);
@@ -70,6 +65,7 @@ export function useGoogleAuth() {
       setNeedsOnboarding(false);
       setStatusText("Onboarding complete. You are now signed in.");
     } catch (error) {
+      console.log(error)
       setErrorText(error instanceof Error ? error.message : "Onboarding failed");
     } finally {
       setLoading(false);
