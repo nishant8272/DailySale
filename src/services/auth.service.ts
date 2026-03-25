@@ -14,12 +14,16 @@ export const continueWithGoogleApi = async (
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ idToken }),
   });
-
-  const payload = (await response.json()) as ContinueGoogleResponse & {
+  const data = await response.json();
+  console.log(data.token)
+  localStorage.setItem('token', data.token);
+  
+  const payload = (data) as ContinueGoogleResponse & {
     message?: string;
   };
 
   if (!response.ok) {
+    console.log("payloadmessage", payload.message)
     throw new Error(payload.message || "Google login failed");
   }
 
