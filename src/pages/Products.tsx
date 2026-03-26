@@ -1,24 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import type { ChangeEvent } from "react";
 /* ─────────────────────────── TYPES ─────────────────────────── */
-type Unit = "kg" | "litre" | "piece";
-type SortDir = "asc" | "desc";
-type SortKey = keyof Pick<Product, "name" | "category" | "sellPrice" | "cost">;
 
-interface Product {
-  id: number;
-  name: string;
-  sellPrice: number;
-  cost: number;
-  category: string;
-  unit: Unit;
-}
+import type { Product } from "../types/product.types";
+import { getAllProducts, deleteProduct } from "../services/product.service";
+type Unit = "kg" | "litre" | "piece" | "packet";
+type SortDir = "asc" | "desc";
+type SortKey = keyof Pick<Product, "name" | "category" | "current_sell_price" | "current_buy_price">;
 
 interface FormState {
   name: string;
-  sellPrice: string;
-  cost: string;
+  current_sell_price: string;
+  current_buy_price: string;
   category: string;
   unit: Unit;
 }
@@ -113,16 +107,21 @@ const s: Record<string, React.CSSProperties> = {
     background: "#f5f0e8",
     fontFamily: "'Inter', sans-serif",
     color: "#1a1a1a",
+    width: "100vw",
+    maxWidth: "100vw",
+    overflowX: "hidden",
   },
   sidebar: {
-    width: 280,
-    minWidth: 280,
+    width: 260,
+    minWidth: 220,
     background: "#faf8f3",
     borderRight: "1px solid #e2ddd5",
-    padding: "36px 24px",
+    padding: "36px 18px",
     display: "flex",
     flexDirection: "column",
     gap: 15,
+    boxShadow: "2px 0 8px 0 rgba(0,0,0,0.03)",
+    zIndex: 2,
   },
   sidebarTop: {
     paddingBottom: 20,
@@ -228,11 +227,14 @@ const s: Record<string, React.CSSProperties> = {
   },
   main: {
     flex: 1,
-    padding: "36px 36px",
+    minWidth: 0,
+    padding: "36px 3vw 36px 3vw",
     display: "flex",
     flexDirection: "column",
     gap: 22,
-    overflow: "hidden",
+    overflow: "auto",
+    width: "100%",
+    maxWidth: "100vw",
   },
   pageHeader: {
     display: "flex",
@@ -250,7 +252,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 13,
     color: "#9a9690",
   },
-  statsRow: { display: "flex", gap: 10, flexWrap: "wrap" },
+  statsRow: { display: "flex", gap: 10, flexWrap: "wrap", width: "100%" },
   statCard: {
     flex: 1,
     minWidth: 110,
@@ -280,8 +282,12 @@ const s: Record<string, React.CSSProperties> = {
     border: "1px solid #e2ddd5",
     borderRadius: 6,
     background: "#faf8f3",
+    width: "100%",
+    maxWidth: "100vw",
+    marginTop: 8,
+    boxSizing: "border-box",
   },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
+  table: { width: "100%", minWidth: 800, borderCollapse: "collapse", fontSize: 13 },
   th: {
     padding: "13px 18px",
     textAlign: "left",
@@ -372,8 +378,8 @@ const s: Record<string, React.CSSProperties> = {
 /* ─────────────────────────── INITIAL FORM ─────────────────────────── */
 const EMPTY_FORM: FormState = {
   name: "",
-  sellPrice: "",
-  cost: "",
+  current_sell_price: "",
+  current_buy_price: "",
   category: "",
   unit: "kg",
 };
@@ -381,8 +387,21 @@ const EMPTY_FORM: FormState = {
 /* ─────────────────────────── COMPONENT ─────────────────────────── */
 export default function ProductSection(): React.ReactElement {
   const [products, setProducts] = useState<Product[]>([]);
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const data = await getAllProducts();
+        // Sort: active first, inactive last
+        data.sort((a: Product, b: Product) => (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1));
+        setProducts(data);
+      } catch (err) {
+        setProducts([]);
+      }
+    };
+    fetchProducts();
+  }, []);
   const [form, setForm]         = useState<FormState>(EMPTY_FORM);
-  const [editId, setEditId]     = useState<number | null>(null);
+  const [editId, setEditId]     = useState<string | null>(null);
   const [search, setSearch]     = useState<string>("");
   const [sortBy, setSortBy]     = useState<SortKey | null>(null);
   const [sortDir, setSortDir]   = useState<SortDir>("asc");
@@ -393,42 +412,31 @@ export default function ProductSection(): React.ReactElement {
   };
 
   const handleSubmit = (): void => {
-    if (!form.name.trim() || !form.sellPrice || !form.cost) return;
-
-    const updated: Product = {
-      id: editId ?? Date.now(),
-      name: form.name,
-      sellPrice: Number(form.sellPrice),
-      cost: Number(form.cost),
-      category: form.category,
-      unit: form.unit,
-    };
-
-    if (editId !== null) {
-      setProducts((prev) => prev.map((p) => (p.id === editId ? updated : p)));
-      setEditId(null);
-    } else {
-      setProducts((prev) => [...prev, updated]);
-    }
+    // No local add/edit, backend only
     setForm(EMPTY_FORM);
   };
 
   const handleEdit = (p: Product): void => {
-    setEditId(p.id);
+    setEditId(p._id);
     setForm({
       name: p.name,
-      sellPrice: String(p.sellPrice),
-      cost: String(p.cost),
+      current_sell_price: String(p.current_sell_price),
+      current_buy_price: String(p.current_buy_price),
       category: p.category,
-      unit: p.unit,
+      unit: p.unit as Unit,
     });
   };
 
-  const handleDelete = (id: number): void => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    if (editId === id) {
-      setEditId(null);
-      setForm(EMPTY_FORM);
+  const handleDelete = async (id: string): Promise<void> => {
+    try {
+      await deleteProduct(id);
+      setProducts((prev) => prev.filter((p) => p._id !== id));
+      if (editId === id) {
+        setEditId(null);
+        setForm(EMPTY_FORM);
+      }
+    } catch (err) {
+      alert("Failed to delete product.");
     }
   };
 
@@ -447,6 +455,8 @@ export default function ProductSection(): React.ReactElement {
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       (p.category ?? "").toLowerCase().includes(search.toLowerCase())
   );
+  // Always show active first, inactive last
+  filtered = [...filtered].sort((a, b) => (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1));
 
   if (sortBy) {
     filtered = [...filtered].sort((a, b) => {
@@ -461,32 +471,34 @@ export default function ProductSection(): React.ReactElement {
     });
   }
 
-  const totalProducts: number = products.length;
+  // Only include active products in stats
+  const activeProducts = products.filter((p) => p.is_active);
+  const totalProducts: number = activeProducts.length;
 
-  const avgMargin: number = products.length
+  const avgMargin: number = activeProducts.length
     ? Math.round(
-        products.reduce((acc, p) => acc + getMarginPct(p.sellPrice, p.cost), 0) /
-          products.length
+        activeProducts.reduce((acc, p) => acc + getMarginPct(p.current_sell_price, p.current_buy_price), 0) /
+          activeProducts.length
       )
     : 0;
 
-  const topProduct: Product | null = products.length
-    ? products.reduce((best, p) =>
-        getMarginPct(p.sellPrice, p.cost) > getMarginPct(best.sellPrice, best.cost)
+  const topProduct: Product | null = activeProducts.length
+    ? activeProducts.reduce((best, p) =>
+        getMarginPct(p.current_sell_price, p.current_buy_price) > getMarginPct(best.current_sell_price, best.current_buy_price)
           ? p
           : best
       )
     : null;
 
   const showPreview: boolean =
-    !!form.sellPrice && !!form.cost && Number(form.sellPrice) > 0 && Number(form.cost) > 0;
+    !!form.current_sell_price && !!form.current_buy_price && Number(form.current_sell_price) > 0 && Number(form.current_buy_price) > 0;
 
   /* ── Stat rows config ── */
   const stats: [string, string | number, boolean][] = [
-    ["Total",       totalProducts,                                                                  false],
+    ["Total Active Products",       totalProducts,                                                                  false],
     ["Avg margin",  `${avgMargin}%`,                                                                true],
-    ["Best margin", topProduct ? `${getMarginPct(topProduct.sellPrice, topProduct.cost)}%` : "—",  true],
-    ["Categories",  new Set(products.map((p) => p.category || "—")).size,                          false],
+    ["Best margin", topProduct ? `${getMarginPct(topProduct.current_sell_price, topProduct.current_buy_price)}%` : "—",  true],
+    ["Categories",  new Set(activeProducts.map((p) => p.category || "—")).size,                          false],
   ];
 
   /* ── Column config ── */
@@ -494,8 +506,8 @@ export default function ProductSection(): React.ReactElement {
   const columns: ColDef[] = [
     ["name",      "Product"],
     ["category",  "Category"],
-    ["sellPrice", "Sell Price"],
-    ["cost",      "Cost"],
+    ["current_sell_price", "Sell Price"],
+    ["current_buy_price",      "Cost"],
     [null,        "Margin"],
     [null,        "Actions"],
   ];
@@ -526,9 +538,9 @@ export default function ProductSection(): React.ReactElement {
         <label style={s.label}>Selling Price (₹)</label>
         <input
           className="ps-input"
-          name="sellPrice"
+          name="current_sell_price"
           type="number"
-          value={form.sellPrice}
+          value={form.current_sell_price}
           onChange={handleChange}
           placeholder="0"
           min="0"
@@ -537,9 +549,9 @@ export default function ProductSection(): React.ReactElement {
         <label style={s.label}>Cost Price (₹)</label>
         <input
           className="ps-input"
-          name="cost"
+          name="current_buy_price"
           type="number"
-          value={form.cost}
+          value={form.current_buy_price}
           onChange={handleChange}
           placeholder="0"
           min="0"
@@ -572,9 +584,9 @@ export default function ProductSection(): React.ReactElement {
           <div style={s.preview}>
             <span style={s.previewLabel}>Margin Preview</span>
             <span style={s.previewVal}>
-              ₹{getMargin(Number(form.sellPrice), Number(form.cost))}
+              ₹{getMargin(Number(form.current_sell_price), Number(form.current_buy_price))}
               <span style={s.previewSub}>
-                ({getMarginPct(Number(form.sellPrice), Number(form.cost))}%)
+                ({getMarginPct(Number(form.current_sell_price), Number(form.current_buy_price))}%)
               </span>
             </span>
           </div>
@@ -670,26 +682,34 @@ export default function ProductSection(): React.ReactElement {
                   </tr>
                 ) : (
                   filtered.map((p, i) => {
-                    const m   = getMargin(p.sellPrice, p.cost);
-                    const pct = getMarginPct(p.sellPrice, p.cost);
+                    const m   = getMargin(p.current_sell_price, p.current_buy_price);
+                    const pct = getMarginPct(p.current_sell_price, p.current_buy_price);
                     return (
                       <tr
-                        key={p.id}
+                        key={p._id}
                         className="ps-row"
-                        style={{ ...s.tr, animationDelay: `${i * 30}ms` }}
+                        style={{
+                          ...s.tr,
+                          animationDelay: `${i * 30}ms`,
+                          opacity: p.is_active ? 1 : 0.6,
+                          color: !p.is_active ? '#b0b0b0' : undefined,
+                        }}
                       >
                         <td style={s.td}>
                           <div style={s.productName}>{p.name}</div>
                           <div style={s.productUnit}>{p.unit}</div>
+                          {!p.is_active && (
+                            <span style={{ fontSize: 11, color: '#c0392b', marginLeft: 8 }}>(Inactive)</span>
+                          )}
                         </td>
                         <td style={s.td}>
                           <span style={s.catText}>{p.category || "—"}</span>
                         </td>
                         <td style={s.td}>
-                          <span style={s.sellPrice}>₹{p.sellPrice}</span>
+                          <span style={s.sellPrice}>₹{p.current_sell_price}</span>
                         </td>
                         <td style={s.td}>
-                          <span style={s.cost}>₹{p.cost}</span>
+                          <span style={s.cost}>₹{p.current_buy_price}</span>
                         </td>
                         <td style={s.td}>
                           <span style={s.marginVal}>₹{m}</span>
@@ -711,10 +731,22 @@ export default function ProductSection(): React.ReactElement {
                             </button>
                             <button
                               className="act-btn del-btn"
-                              style={{ ...s.actBtn, color: "#c5c0b8" }}
-                              onClick={() => handleDelete(p.id)}
+                              style={{ ...s.actBtn, color: p.is_active ? '#c0392b' : '#1a8a3c', borderColor: p.is_active ? '#c0392b' : '#1a8a3c' }}
+                              onClick={async () => {
+                                // Toggle active/inactive instead of delete
+                                try {
+                                  setProducts((prev) => prev.map((prod) =>
+                                    prod._id === p._id ? { ...prod, is_active: !prod.is_active } : prod
+                                  ));
+                                  handleDelete(p._id); // Reuse delete endpoint to toggle active status                                } catch (err) {
+                                  alert('Failed to update product status.');
+                                }
+                                catch (err) {
+                                  alert('Failed to update product status.');
+                                }
+                              }}
                             >
-                              Delete
+                              {p.is_active ? 'Set Inactive' : 'Set Active'}
                             </button>
                           </div>
                         </td>
