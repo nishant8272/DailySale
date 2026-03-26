@@ -110,7 +110,7 @@ const DailySales: React.FC = () => {
   const totalClosing      = Object.values(closingStocks).reduce((s, v) => s + (parseInt(v) || 0), 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-50 pb-20"
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-indigo-50/40 to-slate-50 pb-20"
       style={{ fontFamily: "'DM Sans', 'Nunito', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
@@ -120,12 +120,12 @@ const DailySales: React.FC = () => {
         .scroll-thin::-webkit-scrollbar-thumb:hover { background: #7c3aed; }
       `}</style>
 
-      <div className="max-w-screen-xl mx-auto px-4 pt-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 pt-8 space-y-8">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-200">
+            <div className="h-11 w-11 rounded-2xl bg-linear-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-200">
               <ShoppingBag className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -161,7 +161,7 @@ const DailySales: React.FC = () => {
             style={{ maxHeight: "calc(100vh - 220px)" }}
           >
             {isLoading && (
-              <div className="sticky top-0 left-0 w-full pointer-events-none z-[200]" style={{ height: 0 }}>
+              <div className="sticky top-0 left-0 w-full pointer-events-none z-200" style={{ height: 0 }}>
                 <div className="absolute left-0 w-full flex items-center justify-center" style={{ height: 400, top: 0 }}>
                   <div className="px-8 py-6 flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white/95 shadow-lg">
                     <Loader2 className="h-10 w-10 animate-spin text-violet-600" />
@@ -172,7 +172,7 @@ const DailySales: React.FC = () => {
             )}
 
             <div className="relative">
-              {isLoading && <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-[100]" />}
+              {isLoading && <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-100" />}
 
               <table className="border-collapse" style={{ tableLayout: "fixed" }}>
                 <thead className="sticky top-0 z-40">
@@ -196,7 +196,7 @@ const DailySales: React.FC = () => {
                           ref={isToday ? todayThRef : undefined}
                           className={[
                             "text-xs font-semibold whitespace-nowrap border-r border-slate-200 last:border-r-0",
-                            isToday  ? "bg-gradient-to-b from-violet-100 to-violet-50 text-violet-800"
+                            isToday  ? "bg-linear-to-b from-violet-100 to-violet-50 text-violet-800"
                             : isFuture ? "bg-slate-50/60 text-slate-300"
                             : "bg-slate-50 text-slate-500",
                           ].join(" ")}
@@ -323,7 +323,7 @@ const DailySales: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={isLoading}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 shadow-md shadow-violet-200 hover:from-violet-700 hover:to-indigo-700 hover:shadow-lg hover:shadow-violet-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-200"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-linear-to-r from-violet-600 to-indigo-600 shadow-md shadow-violet-200 hover:from-violet-700 hover:to-indigo-700 hover:shadow-lg hover:shadow-violet-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-200"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Closing Stock
