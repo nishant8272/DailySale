@@ -1,764 +1,223 @@
-import React, { useState, useEffect } from "react";
-
-import type { ChangeEvent } from "react";
-/* ─────────────────────────── TYPES ─────────────────────────── */
-
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  createProduct,
+  getAllProducts,
+  getProductCategories,
+} from "../services/product.service";
 import type { Product } from "../types/product.types";
-import { getAllProducts, deleteProduct } from "../services/product.service";
-type Unit = "kg" | "litre" | "piece" | "packet";
-type SortDir = "asc" | "desc";
-type SortKey = keyof Pick<Product, "name" | "category" | "current_sell_price" | "current_buy_price">;
 
-interface FormState {
-  name: string;
-  current_sell_price: string;
-  current_buy_price: string;
-  category: string;
-  unit: Unit;
-}
+type Unit = Product["unit"];
 
-/* ─────────────────────────── CONSTANTS ─────────────────────────── */
-const UNITS: Unit[] = ["kg", "litre", "piece"];
-
-/* ─────────────────────────── HELPERS ─────────────────────────── */
-const getMargin    = (sell: number, cost: number): number => sell - cost;
-const getMarginPct = (sell: number, cost: number): number =>
-  sell > 0 ? Math.round(((sell - cost) / sell) * 100) : 0;
-
-/* ─────────────────────────── CSS ─────────────────────────── */
-const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  .ps-input {
-    width: 100%;
-    padding: 10px 13px;
-    border: 1.5px solid #d8d3c8;
-    border-radius: 4px;
-    font-size: 13px;
-    font-family: 'Inter', sans-serif;
-    background: #faf8f3;
-    color: #1a1a1a;
-    transition: border-color 0.15s, box-shadow 0.15s;
-  }
-  .ps-input::placeholder { color: #b5b0a5; }
-  .ps-input:focus {
-    outline: none;
-    border-color: #1a8a3c;
-    box-shadow: 0 0 0 3px rgba(26,138,60,0.1);
-    background: #fff;
-  }
-
-  .unit-btn:hover {
-    background: #1a1a1a !important;
-    color: #f5f0e8 !important;
-    border-color: #1a1a1a !important;
-  }
-
-  .submit-btn:hover {
-    background: #1a1a1a !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18) !important;
-  }
-
-  .cancel-btn:hover {
-    color: #1a1a1a !important;
-    border-color: #aaa8a2 !important;
-  }
-
-  .ps-row { animation: rowIn 0.25s ease both; }
-  .ps-row:hover td { background: #f5f0e8 !important; }
-
-  .act-btn:hover {
-    background: #1a1a1a !important;
-    color: #f5f0e8 !important;
-    border-color: #1a1a1a !important;
-  }
-  .del-btn:hover {
-    background: #c0392b !important;
-    color: #fff !important;
-    border-color: #c0392b !important;
-  }
-
-  .sort-th { cursor: pointer; }
-  .sort-th:hover { color: #1a8a3c !important; }
-
-  .search-wrap { position: relative; display: flex; align-items: center; }
-  .search-icon { position: absolute; left: 12px; color: #b5b0a5; font-size: 14px; pointer-events: none; }
-  .search-input { padding-left: 34px !important; width: 240px; }
-
-  @keyframes rowIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: #f5f0e8; }
-  ::-webkit-scrollbar-thumb { background: #d8d3c8; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #b5b0a5; }
-`;
-
-/* ─────────────────────────── STYLES ─────────────────────────── */
-const s: Record<string, React.CSSProperties> = {
-  root: {
-    display: "flex",
-    minHeight: "100vh",
-    background: "#f5f0e8",
-    fontFamily: "'Inter', sans-serif",
-    color: "#1a1a1a",
-    width: "100vw",
-    maxWidth: "100vw",
-    overflowX: "hidden",
-  },
-  sidebar: {
-    width: 260,
-    minWidth: 220,
-    background: "#faf8f3",
-    borderRight: "1px solid #e2ddd5",
-    padding: "36px 18px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 15,
-    boxShadow: "2px 0 8px 0 rgba(0,0,0,0.03)",
-    zIndex: 2,
-  },
-  sidebarTop: {
-    paddingBottom: 20,
-    borderBottom: "1px solid #e2ddd5",
-    marginBottom: 4,
-  },
-  sidebarTitle: {
-    fontFamily: "'Merriweather', serif",
-    fontSize: 20,
-    fontWeight: 700,
-    color: "#1a1a1a",
-    letterSpacing: "-0.3px",
-    lineHeight: 1.2,
-  },
-  sidebarSub: {
-    fontSize: 12,
-    color: "#9a9690",
-    marginTop: 4,
-  },
-  label: {
-    fontSize: 10,
-    letterSpacing: "0.1em",
-    color: "#9a9690",
-    fontWeight: 600,
-    marginBottom: -8,
-    textTransform: "uppercase",
-  },
-  unitRow: { display: "flex", gap: 6 },
-  unitBtn: {
-    flex: 1,
-    padding: "8px 0",
-    border: "1.5px solid #d8d3c8",
-    borderRadius: 4,
-    background: "#faf8f3",
-    fontSize: 11,
-    fontFamily: "'Inter', sans-serif",
-    color: "#7a7670",
-    cursor: "pointer",
-    transition: "all 0.15s",
-    fontWeight: 500,
-  },
-  unitActive: {
-    background: "#1a1a1a",
-    color: "#f5f0e8",
-    borderColor: "#1a1a1a",
-    fontWeight: 600,
-  },
-  preview: {
-    background: "#eef8f1",
-    border: "1px solid #b8e0c4",
-    borderLeft: "3px solid #1a8a3c",
-    borderRadius: 4,
-    padding: "12px 14px",
-  },
-  previewLabel: {
-    fontSize: 9,
-    letterSpacing: "0.12em",
-    color: "#1a8a3c",
-    display: "block",
-    marginBottom: 5,
-    fontWeight: 600,
-    textTransform: "uppercase",
-  },
-  previewVal: {
-    fontSize: 20,
-    fontWeight: 700,
-    color: "#1a1a1a",
-    fontFamily: "'Merriweather', serif",
-  },
-  previewSub: {
-    fontSize: 12,
-    color: "#5a9a6a",
-    marginLeft: 6,
-    fontWeight: 400,
-    fontFamily: "'Inter', sans-serif",
-  },
-  submitBtn: {
-    width: "100%",
-    padding: "12px 0",
-    background: "#1a1a1a",
-    color: "#f5f0e8",
-    border: "none",
-    borderRadius: 40,
-    fontSize: 13,
-    fontFamily: "'Inter', sans-serif",
-    fontWeight: 600,
-    cursor: "pointer",
-    marginTop: 4,
-    transition: "all 0.18s",
-    letterSpacing: "0.02em",
-  },
-  cancelBtn: {
-    width: "100%",
-    padding: "10px 0",
-    background: "transparent",
-    color: "#9a9690",
-    border: "1px solid #d8d3c8",
-    borderRadius: 40,
-    fontSize: 12,
-    fontFamily: "'Inter', sans-serif",
-    cursor: "pointer",
-    transition: "all 0.15s",
-  },
-  main: {
-    flex: 1,
-    minWidth: 0,
-    padding: "36px 3vw 36px 3vw",
-    display: "flex",
-    flexDirection: "column",
-    gap: 22,
-    overflow: "auto",
-    width: "100%",
-    maxWidth: "100vw",
-  },
-  pageHeader: {
-    display: "flex",
-    alignItems: "baseline",
-    gap: 12,
-  },
-  pageTitle: {
-    fontFamily: "'Merriweather', serif",
-    fontSize: 26,
-    fontWeight: 700,
-    color: "#1a1a1a",
-    letterSpacing: "-0.4px",
-  },
-  pageCount: {
-    fontSize: 13,
-    color: "#9a9690",
-  },
-  statsRow: { display: "flex", gap: 10, flexWrap: "wrap", width: "100%" },
-  statCard: {
-    flex: 1,
-    minWidth: 110,
-    background: "#faf8f3",
-    border: "1px solid #e2ddd5",
-    borderRadius: 6,
-    padding: "16px 18px",
-  },
-  statLabel: {
-    fontSize: 9,
-    letterSpacing: "0.12em",
-    color: "#9a9690",
-    marginBottom: 6,
-    fontWeight: 600,
-    textTransform: "uppercase",
-  },
-  statVal: {
-    fontSize: 26,
-    fontWeight: 700,
-    color: "#1a1a1a",
-    fontFamily: "'Merriweather', serif",
-  },
-  statGreen: { color: "#1a8a3c" },
-  toolbar: { display: "flex", alignItems: "center", gap: 10 },
-  tableWrap: {
-    overflowX: "auto",
-    border: "1px solid #e2ddd5",
-    borderRadius: 6,
-    background: "#faf8f3",
-    width: "100%",
-    maxWidth: "100vw",
-    marginTop: 8,
-    boxSizing: "border-box",
-  },
-  table: { width: "100%", minWidth: 800, borderCollapse: "collapse", fontSize: 13 },
-  th: {
-    padding: "13px 18px",
-    textAlign: "left",
-    fontSize: 9,
-    letterSpacing: "0.12em",
-    color: "#9a9690",
-    fontWeight: 600,
-    borderBottom: "1px solid #e2ddd5",
-    background: "#faf8f3",
-    userSelect: "none",
-    whiteSpace: "nowrap",
-    textTransform: "uppercase",
-    transition: "color 0.15s",
-  },
-  tr: { borderBottom: "1px solid #ede9e0" },
-  td: { padding: "14px 18px", verticalAlign: "middle", transition: "background 0.1s" },
-  productName: { fontWeight: 600, fontSize: 14, color: "#1a1a1a" },
-  productUnit: { fontSize: 11, color: "#b5b0a5", marginTop: 2 },
-  catText: { fontSize: 12, color: "#7a7670", fontStyle: "italic" },
-  sellPrice: { fontWeight: 700, color: "#1a1a1a", fontSize: 15 },
-  cost: { color: "#9a9690", fontSize: 13 },
-  marginVal: { fontWeight: 600, color: "#1a8a3c", fontSize: 13 },
-  marginPct: { fontSize: 11, color: "#9a9690" },
-  marginBar: {
-    height: 3,
-    background: "#e2ddd5",
-    borderRadius: 2,
-    marginTop: 6,
-    overflow: "hidden",
-    width: 72,
-  },
-  marginBarFill: {
-    height: "100%",
-    background: "#1a8a3c",
-    borderRadius: 2,
-    transition: "width 0.4s ease",
-  },
-  actions: { display: "flex", gap: 5 },
-  actBtn: {
-    padding: "5px 13px",
-    border: "1px solid #d8d3c8",
-    borderRadius: 40,
-    background: "transparent",
-    fontSize: 11,
-    fontFamily: "'Inter', sans-serif",
-    color: "#7a7670",
-    cursor: "pointer",
-    transition: "all 0.15s",
-    fontWeight: 500,
-  },
-  emptyState: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "100px 20px",
-    gap: 12,
-  },
-  emptyCircle: {
-    width: 52,
-    height: 52,
-    border: "1.5px dashed #d8d3c8",
-    borderRadius: "50%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 20,
-    color: "#d8d3c8",
-    marginBottom: 6,
-  },
-  emptyText: {
-    fontFamily: "'Merriweather', serif",
-    fontSize: 14,
-    color: "#c5c0b8",
-    fontWeight: 700,
-  },
-  emptyHint: { fontSize: 12, color: "#d8d3c8" },
-  noMatch: {
-    textAlign: "center",
-    padding: "50px 20px",
-    color: "#c5c0b8",
-    fontSize: 12,
-    fontStyle: "italic",
-    fontFamily: "'Merriweather', serif",
-  },
-};
-
-/* ─────────────────────────── INITIAL FORM ─────────────────────────── */
-const EMPTY_FORM: FormState = {
-  name: "",
-  current_sell_price: "",
-  current_buy_price: "",
-  category: "",
-  unit: "kg",
-};
-
-/* ─────────────────────────── COMPONENT ─────────────────────────── */
-export default function ProductSection(): React.ReactElement {
+export default function UnifiedInventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const data = await getAllProducts();
-        // Sort: active first, inactive last
-        data.sort((a: Product, b: Product) => (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1));
-        setProducts(data);
-      } catch (err) {
-        setProducts([]);
-      }
-    };
-    fetchProducts();
-  }, []);
-  const [form, setForm]         = useState<FormState>(EMPTY_FORM);
-  const [editId, setEditId]     = useState<string | null>(null);
-  const [search, setSearch]     = useState<string>("");
-  const [sortBy, setSortBy]     = useState<SortKey | null>(null);
-  const [sortDir, setSortDir]   = useState<SortDir>("asc");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [btnLoading, setBtnLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
 
-  /* ── Handlers ── */
-  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  const [formData, setFormData] = useState({
+    name: "",
+    category: "",
+    unit: "piece" as Unit,
+    current_buy_price: 0,
+    current_sell_price: 0,
+    current_stock: 0,
+    low_stock_threshold: 5
+  });
 
-  const handleSubmit = (): void => {
-    // No local add/edit, backend only
-    setForm(EMPTY_FORM);
-  };
-
-  const handleEdit = (p: Product): void => {
-    setEditId(p._id);
-    setForm({
-      name: p.name,
-      current_sell_price: String(p.current_sell_price),
-      current_buy_price: String(p.current_buy_price),
-      category: p.category,
-      unit: p.unit as Unit,
-    });
-  };
-
-  const handleDelete = async (id: string): Promise<void> => {
+  const fetchData = async () => {
     try {
-      await deleteProduct(id);
-      setProducts((prev) => prev.filter((p) => p._id !== id));
-      if (editId === id) {
-        setEditId(null);
-        setForm(EMPTY_FORM);
-      }
-    } catch (err) {
-      alert("Failed to delete product.");
+      setLoading(true);
+      const [productData, categoryData] = await Promise.all([
+        getAllProducts(),
+        getProductCategories(),
+      ]);
+      setProducts((productData || []).reverse());
+      setCategories(categoryData || []);
+    } catch {
+      setError("Failed to fetch products");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSort = (col: SortKey): void => {
-    if (sortBy === col) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(col);
-      setSortDir("asc");
+  useEffect(() => { fetchData(); }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.current_sell_price <= formData.current_buy_price) {
+      setError("Sell price must be greater than buy price.");
+      return;
+    }
+
+    try {
+      setBtnLoading(true);
+      setError("");
+      const newProduct = await createProduct(formData);
+
+      // Add to top of list & set "Recent" badge
+      setProducts((prev) => [newProduct, ...prev]);
+      setLastAddedId(newProduct._id);
+      
+      // Clear badge after 30 seconds
+      setTimeout(() => setLastAddedId(null), 30000);
+
+      // Reset form
+      setFormData({
+        name: "", category: "", unit: "piece",
+        current_buy_price: 0, current_sell_price: 0,
+        current_stock: 0, low_stock_threshold: 5
+      });
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to add product");
+    } finally {
+      setBtnLoading(false);
     }
   };
 
-  /* ── Derived state ── */
-  let filtered: Product[] = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.category ?? "").toLowerCase().includes(search.toLowerCase())
-  );
-  // Always show active first, inactive last
-  filtered = [...filtered].sort((a, b) => (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1));
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  }, [products, search]);
 
-  if (sortBy) {
-    filtered = [...filtered].sort((a, b) => {
-      const va = a[sortBy];
-      const vb = b[sortBy];
-      if (typeof va === "string" && typeof vb === "string") {
-        return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
-      }
-      return sortDir === "asc"
-        ? (va as number) - (vb as number)
-        : (vb as number) - (va as number);
-    });
-  }
+  const isLosingMoney = formData.current_sell_price > 0 && formData.current_sell_price <= formData.current_buy_price;
 
-  // Only include active products in stats
-  const activeProducts = products.filter((p) => p.is_active);
-  const totalProducts: number = activeProducts.length;
-
-  const avgMargin: number = activeProducts.length
-    ? Math.round(
-        activeProducts.reduce((acc, p) => acc + getMarginPct(p.current_sell_price, p.current_buy_price), 0) /
-          activeProducts.length
-      )
-    : 0;
-
-  const topProduct: Product | null = activeProducts.length
-    ? activeProducts.reduce((best, p) =>
-        getMarginPct(p.current_sell_price, p.current_buy_price) > getMarginPct(best.current_sell_price, best.current_buy_price)
-          ? p
-          : best
-      )
-    : null;
-
-  const showPreview: boolean =
-    !!form.current_sell_price && !!form.current_buy_price && Number(form.current_sell_price) > 0 && Number(form.current_buy_price) > 0;
-
-  /* ── Stat rows config ── */
-  const stats: [string, string | number, boolean][] = [
-    ["Total Active Products",       totalProducts,                                                                  false],
-    ["Avg margin",  `${avgMargin}%`,                                                                true],
-    ["Best margin", topProduct ? `${getMarginPct(topProduct.current_sell_price, topProduct.current_buy_price)}%` : "—",  true],
-    ["Categories",  new Set(activeProducts.map((p) => p.category || "—")).size,                          false],
-  ];
-
-  /* ── Column config ── */
-  type ColDef = [SortKey | null, string];
-  const columns: ColDef[] = [
-    ["name",      "Product"],
-    ["category",  "Category"],
-    ["current_sell_price", "Sell Price"],
-    ["current_buy_price",      "Cost"],
-    [null,        "Margin"],
-    [null,        "Actions"],
-  ];
-
-  /* ── Render ── */
   return (
-    <div style={s.root}>
-      <style>{css}</style>
+    <div className="max-w-350 mx-auto space-y-6 animate-in fade-in duration-500">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-black text-slate-900">Inventory Management</h1>
+        <p className="text-sm text-slate-500 font-medium">Total Products: {products.length}</p>
+      </div>
 
-      {/* ── Sidebar ── */}
-      <aside style={s.sidebar}>
-        <div style={s.sidebarTop}>
-          <div style={s.sidebarTitle}>{editId ? "Edit product" : "Add product"}</div>
-          <div style={s.sidebarSub}>
-            {editId ? "Update the details below" : "Fill in the details to add"}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        {/* LEFT: ADD PRODUCT FORM (Sticky on desktop) */}
+        <div className="lg:col-span-4 lg:sticky lg:top-20 space-y-4">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5 text-[#1D9E75]"><path d="M12 5v14M5 12h14" /></svg>
+              Add New Product
+            </h3>
 
-        <label style={s.label}>Product Name</label>
-        <input
-          className="ps-input"
-          name="name"
-          value={form.name}
-          onChange={handleChange}
-          placeholder="e.g. Paneer"
-        />
+            {error && <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-xs font-bold">{error}</div>}
 
-        <label style={s.label}>Selling Price (₹)</label>
-        <input
-          className="ps-input"
-          name="current_sell_price"
-          type="number"
-          value={form.current_sell_price}
-          onChange={handleChange}
-          placeholder="0"
-          min="0"
-        />
-
-        <label style={s.label}>Cost Price (₹)</label>
-        <input
-          className="ps-input"
-          name="current_buy_price"
-          type="number"
-          value={form.current_buy_price}
-          onChange={handleChange}
-          placeholder="0"
-          min="0"
-        />
-
-        <label style={s.label}>Category</label>
-        <input
-          className="ps-input"
-          name="category"
-          value={form.category}
-          onChange={handleChange}
-          placeholder="e.g. Dairy, Sweets…"
-        />
-
-        <label style={s.label}>Unit</label>
-        <div style={s.unitRow}>
-          {UNITS.map((u) => (
-            <button
-              key={u}
-              className="unit-btn"
-              style={{ ...s.unitBtn, ...(form.unit === u ? s.unitActive : {}) }}
-              onClick={() => setForm((prev) => ({ ...prev, unit: u }))}
-            >
-              {u}
-            </button>
-          ))}
-        </div>
-
-        {showPreview && (
-          <div style={s.preview}>
-            <span style={s.previewLabel}>Margin Preview</span>
-            <span style={s.previewVal}>
-              ₹{getMargin(Number(form.current_sell_price), Number(form.current_buy_price))}
-              <span style={s.previewSub}>
-                ({getMarginPct(Number(form.current_sell_price), Number(form.current_buy_price))}%)
-              </span>
-            </span>
-          </div>
-        )}
-
-        <button style={s.submitBtn} className="submit-btn" onClick={handleSubmit}>
-          {editId ? "Update product" : "Add product"}
-        </button>
-
-        {editId && (
-          <button
-            style={s.cancelBtn}
-            className="cancel-btn"
-            onClick={() => { setEditId(null); setForm(EMPTY_FORM); }}
-          >
-            Cancel
-          </button>
-        )}
-      </aside>
-
-      {/* ── Main ── */}
-      <main style={s.main}>
-
-        <div style={s.pageHeader}>
-          <span style={s.pageTitle}>Products</span>
-          {products.length > 0 && (
-            <span style={s.pageCount}>
-              {products.length} item{products.length !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
-
-        {/* Stats */}
-        {products.length > 0 && (
-          <div style={s.statsRow}>
-            {stats.map(([label, val, green]) => (
-              <div key={label} style={s.statCard}>
-                <div style={s.statLabel}>{label}</div>
-                <div style={{ ...s.statVal, ...(green ? s.statGreen : {}) }}>{val}</div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Product Name</label>
+                <input required type="text" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#1D9E75]" placeholder="enter product name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
               </div>
-            ))}
-          </div>
-        )}
 
-        {/* Search */}
-        {products.length > 0 && (
-          <div style={s.toolbar}>
-            <div className="search-wrap">
-              <span className="search-icon">🔍</span>
-              <input
-                className="ps-input search-input"
-                value={search}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                placeholder="Search by name or category…"
-              />
-            </div>
-          </div>
-        )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Category</label>
+                  <input list="cat-list" required type="text" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Dairy..." value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
+                  <datalist id="cat-list">{categories.map(c => <option key={c} value={c} />)}</datalist>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Unit</label>
+                  <select className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value as Unit})}>
+                    <option value="piece">Piece</option>
+                    <option value="packet">Packet</option>
+                    <option value="kg">kg</option>
+                    <option value="litre">Litre</option>
+                  </select>
+                </div>
+              </div>
 
-        {/* Table */}
-        <div style={s.tableWrap}>
-          {products.length === 0 ? (
-            <div style={s.emptyState}>
-              <div style={s.emptyCircle}>✦</div>
-              <div style={s.emptyText}>No products yet</div>
-              <div style={s.emptyHint}>Add your first product using the form on the left</div>
-            </div>
-          ) : (
-            <table style={s.table}>
-              <thead>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Buy Price (₹)</label>
+                  <input required type="number" min="0" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" value={formData.current_buy_price} onChange={e => setFormData({...formData, current_buy_price: Number(e.target.value)})} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Sell Price (₹)</label>
+                  <input required type="number" min="0" className={`w-full p-2.5 bg-slate-50 border rounded-xl outline-none ${isLosingMoney ? 'border-amber-400' : 'border-slate-200'}`} value={formData.current_sell_price} onChange={e => setFormData({...formData, current_sell_price: Number(e.target.value)})} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Stock</label>
+                  <input type="number" min="0" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" value={formData.current_stock} onChange={e => setFormData({...formData, current_stock: Number(e.target.value)})} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600` uppercase tracking-wider mb-1.5 block">Low Alert</label>
+                  <input type="number" min="1" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" value={formData.low_stock_threshold} onChange={e => setFormData({...formData, low_stock_threshold: Number(e.target.value)})} />
+                </div>
+              </div>
+
+              {isLosingMoney && <p className="text-[10px] text-amber-600 font-bold bg-amber-50 p-2 rounded-lg">Warning: Selling at a loss!</p>}
+
+              <button 
+                disabled={btnLoading}
+                className="w-full py-3.5 bg-[#1D9E75] text-white cursor-pointer rounded-2xl font-black text-sm shadow-lg shadow-green-100 hover:bg-[#168a65] transition-all active:scale-95 disabled:opacity-50"
+              >
+                {btnLoading ? "Processing..." : "Add Product to List"}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* RIGHT: FULL INVENTORY TABLE (8 Columns) */}
+        <div className="lg:col-span-8 space-y-4">
+          <div className="relative group">
+            <input 
+              type="text" 
+              placeholder="Search products..." 
+              className="w-full p-3 pl-10 bg-white border border-slate-200 rounded-2xl shadow-sm outline-none focus:ring-2 focus:ring-[#1D9E75]/20"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 absolute left-4 top-4 text-slate-400"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-125">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] uppercase font-bold tracking-widest">
                 <tr>
-                  {columns.map(([col, label]) => (
-                    <th
-                      key={label}
-                      style={s.th}
-                      className={col ? "sort-th" : ""}
-                      onClick={() => col && handleSort(col)}
-                    >
-                      {label}{" "}
-                      {col
-                        ? sortBy === col
-                          ? sortDir === "asc" ? "↑" : "↓"
-                          : <span style={{ opacity: 0.3 }}>↕</span>
-                        : null}
-                    </th>
-                  ))}
+                  <th className="px-6 py-4">Product Name</th>
+                  <th className="px-6 py-4">Category</th>
+                  <th className="px-6 py-4 text-center">Unit</th>
+                  <th className="px-6 py-4 text-right">Price</th>
+                  <th className="px-6 py-4 text-center">Stock</th>
                 </tr>
               </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={s.noMatch}>No products match your search.</td>
-                  </tr>
-                ) : (
-                  filtered.map((p, i) => {
-                    const m   = getMargin(p.current_sell_price, p.current_buy_price);
-                    const pct = getMarginPct(p.current_sell_price, p.current_buy_price);
-                    return (
-                      <tr
-                        key={p._id}
-                        className="ps-row"
-                        style={{
-                          ...s.tr,
-                          animationDelay: `${i * 30}ms`,
-                          opacity: p.is_active ? 1 : 0.6,
-                          color: !p.is_active ? '#b0b0b0' : undefined,
-                        }}
-                      >
-                        <td style={s.td}>
-                          <div style={s.productName}>{p.name}</div>
-                          <div style={s.productUnit}>{p.unit}</div>
-                          {!p.is_active && (
-                            <span style={{ fontSize: 11, color: '#c0392b', marginLeft: 8 }}>(Inactive)</span>
+              <tbody className="divide-y divide-slate-100">
+                {loading ? (
+                  [1, 2, 3, 4, 5].map(i => <tr key={i} className="animate-pulse h-16 bg-slate-50/30" />)
+                ) : filteredProducts.length > 0 ? (
+                  filteredProducts.map(p => (
+                    <tr key={p._id} className={`transition-all duration-700 ${p._id === lastAddedId ? 'bg-green-50/80 animate-in fade-in slide-in-from-left-4' : 'hover:bg-slate-50/50'}`}>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-slate-800">{p.name}</span>
+                          {p._id === lastAddedId && (
+                            <span className="bg-[#1D9E75] text-white text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Recently Added</span>
                           )}
-                        </td>
-                        <td style={s.td}>
-                          <span style={s.catText}>{p.category || "—"}</span>
-                        </td>
-                        <td style={s.td}>
-                          <span style={s.sellPrice}>₹{p.current_sell_price}</span>
-                        </td>
-                        <td style={s.td}>
-                          <span style={s.cost}>₹{p.current_buy_price}</span>
-                        </td>
-                        <td style={s.td}>
-                          <span style={s.marginVal}>₹{m}</span>
-                          <span style={s.marginPct}> ({pct}%)</span>
-                          <div style={s.marginBar}>
-                            <div
-                              style={{ ...s.marginBarFill, width: `${Math.min(pct, 100)}%` }}
-                            />
-                          </div>
-                        </td>
-                        <td style={s.td}>
-                          <div style={s.actions}>
-                            <button
-                              className="act-btn"
-                              style={s.actBtn}
-                              onClick={() => handleEdit(p)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="act-btn del-btn"
-                              style={{ ...s.actBtn, color: p.is_active ? '#c0392b' : '#1a8a3c', borderColor: p.is_active ? '#c0392b' : '#1a8a3c' }}
-                              onClick={async () => {
-                                // Toggle active/inactive instead of delete
-                                try {
-                                  setProducts((prev) => prev.map((prod) =>
-                                    prod._id === p._id ? { ...prod, is_active: !prod.is_active } : prod
-                                  ));
-                                  handleDelete(p._id); // Reuse delete endpoint to toggle active status                                } catch (err) {
-                                  alert('Failed to update product status.');
-                                }
-                                catch (err) {
-                                  alert('Failed to update product status.');
-                                }
-                              }}
-                            >
-                              {p.is_active ? 'Set Inactive' : 'Set Active'}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                        </div>
+                      </td>
+                      <td className="px-6 py-4"><span className="text-[11px] font-bold text-slate-500 uppercase px-2 py-1 bg-slate-100 rounded-lg">{p.category}</span></td>
+                      <td className="px-6 py-4 text-center text-xs font-medium text-slate-400">{p.unit}</td>
+                      <td className="px-6 py-4 text-right">
+                        <p className="text-sm font-black text-slate-900">₹{p.current_sell_price}</p>
+                        <p className="text-[10px] text-slate-400 font-bold italic">Buy: ₹{p.current_buy_price}</p>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`px-3 py-1 rounded-xl text-xs font-black ${p.current_stock <= p.low_stock_threshold ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-slate-50 text-slate-600 border border-slate-100'}`}>
+                          {p.current_stock}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr><td colSpan={5} className="py-20 text-center text-slate-400 font-medium">No products match your search.</td></tr>
                 )}
               </tbody>
             </table>
-          )}
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
