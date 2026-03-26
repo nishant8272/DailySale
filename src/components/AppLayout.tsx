@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate, Outlet } from "react-router-dom";
-// Assuming these exist in your project structure based on previous prompts
-import { useGoogleAuth } from "../hooks/useGoogleAuth";
-import apiClient from "../api/client";
+import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 interface NavItem {
     name: string;
@@ -13,7 +12,7 @@ interface NavItem {
 }
 
 export function AppLayout() {
-    const { signedUser: user, shop, logout } = useGoogleAuth();
+    const { user, shop, logout } = useAuth();
     const navigate = useNavigate();
     const [alertCount, setAlertCount] = useState<number>(0);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -21,8 +20,16 @@ export function AppLayout() {
     useEffect(() => {
         const fetchAlertCount = async () => {
             try {
-                const { data } = await apiClient.get("/alerts/count");
-                setAlertCount(data.count || 0);
+                const token = localStorage.getItem("token");
+                if (!token) return;
+
+                const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+                const { data } = await axios.get(`${API_BASE_URL}/api/alerts/count`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+                setAlertCount(data.unread_count || data.count || 0);
             } catch (error) {
                 console.error("Failed to fetch alert count", error);
             }
