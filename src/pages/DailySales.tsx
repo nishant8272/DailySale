@@ -92,11 +92,10 @@ const DailySales: React.FC = () => {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem("token") || "";
       const closingArr = Object.entries(closingStocks).map(([product_id, v]) => ({
         product_id, closing_stock: v === "" ? 0 : parseInt(v, 10),
       }));
-      await closeShift(closingArr, token);
+      await closeShift(closingArr);
       setRefreshFlag((f) => f + 1);
       alert("Closing stock saved!");
     } catch { alert("Failed to save closing stock"); }
