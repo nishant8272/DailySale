@@ -49,12 +49,11 @@ const DailySales: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const token = localStorage.getItem("token") || "";
-        const productsRes = await getAllProducts(token);
+        const productsRes = await getAllProducts();
         const allProducts: Product[] = productsRes.data;
         let dailyMap: Record<string, DailyReportProduct> = {};
         try {
-          const reportRes = await getDailyReport(today, token);
+          const reportRes = await getDailyReport(today);
           const report: DailyReport = reportRes.data;
           if (report?.products)
             dailyMap = Object.fromEntries(report.products.map((p) => [p.product_id, p]));
