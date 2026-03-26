@@ -7,5 +7,12 @@ export const getAllProducts = async () => {
   const res = await axios.get(`${API_BASE_URL}/api/products`, {
     headers: { Authorization: `Bearer ${localStorageKey()}` },
   });
+  return res.data.data;
+};
+
+export const deleteProduct = async (id: string) => {
+  const res = await axios.delete(`${API_BASE_URL}/api/products/${id}`, {
+    headers: { Authorization: `Bearer ${localStorageKey()}` },
+  });
   return res.data;
 };

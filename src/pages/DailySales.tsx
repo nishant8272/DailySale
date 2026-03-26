@@ -18,7 +18,8 @@ const DAY_COL_W     = 52;
 const TODAY_COL_W   = 110;
 
 const DailySales: React.FC = () => {
-  const [products, setProducts]           = useState<DailyReportProduct[]>([]);
+  // Add is_active to each row for UI logic
+  const [products, setProducts] = useState<(DailyReportProduct & { is_active: boolean })[]>([]);
   const [closingStocks, setClosingStocks] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading]         = useState(false);
   const [today, setToday]                 = useState<string>("");
@@ -50,7 +51,7 @@ const DailySales: React.FC = () => {
       setIsLoading(true);
       try {
         const productsRes = await getAllProducts();
-        const allProducts: Product[] = productsRes.data;
+        const allProducts: Product[] = productsRes;
         let dailyMap: Record<string, DailyReportProduct> = {};
         try {
           const reportRes = await getDailyReport(today);
@@ -59,9 +60,10 @@ const DailySales: React.FC = () => {
             dailyMap = Object.fromEntries(report.products.map((p) => [p.product_id, p]));
         } catch { /* no report yet */ }
 
-        const merged: DailyReportProduct[] = allProducts.map((prod) => {
+        // Merge and attach is_active for UI logic
+        const merged: (DailyReportProduct & { is_active: boolean })[] = allProducts.map((prod) => {
           const daily = dailyMap[prod._id];
-          return daily || {
+          const base: DailyReportProduct = daily || {
             product_id: prod._id, product_name: prod.name,
             opening_stock: prod.current_stock, closing_stock: 0,
             total_added: 0, units_sold: 0,
@@ -69,7 +71,10 @@ const DailySales: React.FC = () => {
             active_buy_price: prod.current_buy_price,
             revenue: 0, profit: 0, is_closing_entered: false,
           };
+          return { ...base, is_active: prod.is_active };
         });
+        // Sort: active first, inactive last
+        merged.sort((a, b) => (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1));
         setProducts(merged);
         // Use empty string as default — avoids the "020" prefixing bug
         const closing: Record<string, string> = {};
@@ -231,18 +236,27 @@ const DailySales: React.FC = () => {
                   ) : products.map((row, rowIdx) => (
                     <tr
                       key={row.product_id}
-                      className={["group transition-colors", rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/30", "hover:bg-violet-50/25"].join(" ")}
+                      className={[
+                        "group transition-colors",
+                        rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/30",
+                        "hover:bg-violet-50/25",
+                        !row.is_active ? "opacity-60" : ""
+                      ].join(" ")}
                     >
                       {/* Sticky product name */}
                       <td
-                        className="sticky left-0 z-20 px-4 py-4 text-sm font-semibold text-slate-900 border-r border-slate-200 whitespace-nowrap"
+                        className="sticky left-0 z-20 px-4 py-4 text-sm font-semibold border-r border-slate-200 whitespace-nowrap"
                         style={{
                           minWidth: PRODUCT_COL_W, width: PRODUCT_COL_W,
                           background: "rgba(250,249,255,0.97)",
                           boxShadow: "2px 0 4px rgba(0,0,0,0.04), inset -1px 0 0 rgba(226,232,240,0.55)",
+                          color: !row.is_active ? "#b0b0b0" : undefined,
                         }}
                       >
                         {row.product_name}
+                        {!row.is_active && (
+                          <span className="ml-2 text-xs font-semibold text-red-400">(Inactive)</span>
+                        )}
                       </td>
 
                       {days.map((d) => {
@@ -262,14 +276,30 @@ const DailySales: React.FC = () => {
                             style={{ minWidth: colW, width: colW, padding: "10px 4px" }}
                           >
                             {isToday ? (
-                              <input
-                                type="number"
-                                className="w-16 px-2 py-2 rounded-xl border border-violet-300 bg-white text-indigo-800 text-xs font-medium text-center outline-none transition-all focus:border-violet-600 focus:ring-2 focus:ring-violet-200 shadow-sm"
-                                style={{ fontFamily: "'DM Mono', monospace" }}
-                                value={closingStocks[row.product_id] ?? ""}
-                                placeholder="0"
-                                onChange={(e) => handleClosingStockChange(row.product_id, e.target.value)}
-                              />
+                              !row.is_active ? (
+                                // Inactive: only show backend closing stock, no input
+                                row.is_closing_entered ? (
+                                  <span className="text-xs font-semibold text-violet-700" style={{ fontFamily: "'DM Mono', monospace" }}>
+                                    {row.closing_stock}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-slate-400 italic">Inactive</span>
+                                )
+                              ) : row.is_closing_entered ? (
+                                <span className="text-xs font-semibold text-violet-700" style={{ fontFamily: "'DM Mono', monospace" }}>
+                                  {row.closing_stock}
+                                </span>
+                              ) : (
+                                <input
+                                  type="number"
+                                  className="w-16 px-2 py-2 rounded-xl border border-violet-300 bg-white text-indigo-800 text-xs font-medium text-center outline-none transition-all focus:border-violet-600 focus:ring-2 focus:ring-violet-200 shadow-sm"
+                                  style={{ fontFamily: "'DM Mono', monospace" }}
+                                  value={closingStocks[row.product_id] ?? ""}
+                                  placeholder="0"
+                                  onChange={(e) => handleClosingStockChange(row.product_id, e.target.value)}
+                                  disabled={row.is_closing_entered}
+                                />
+                              )
                             ) : isPast ? (
                               <span className="text-xs text-slate-300" style={{ fontFamily: "'DM Mono', monospace" }}>—</span>
                             ) : (
