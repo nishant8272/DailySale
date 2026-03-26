@@ -297,13 +297,6 @@ function StatCard({ icon, value, label }: StatCardProps): React.ReactElement {
 
 export default function LandingPage(): React.ReactElement {
   const navigate = useNavigate();
-  const [visible, setVisible] = useState<boolean>(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 100);
-    return () => clearTimeout(t);
-  }, []);
-
   const howItWorksItems: HowItWorksItem[] = [
     {
       step: "01",
