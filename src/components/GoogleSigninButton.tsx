@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react"
 
 type GoogleCredentialResponse = {
   credential?: string;
@@ -79,9 +79,9 @@ export function GoogleSigninButton({
       googleButtonRef.current.innerHTML = "";
       window.google.accounts.id.renderButton(googleButtonRef.current, {
         type: "standard",
-        theme: "filled_black",
+        theme: "outline",
         text: "continue_with",
-        shape: "pill",
+        shape: "rectangular", 
         size: "large",
         width: "320",
       });
