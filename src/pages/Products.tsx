@@ -107,16 +107,21 @@ const s: Record<string, React.CSSProperties> = {
     background: "#f5f0e8",
     fontFamily: "'Inter', sans-serif",
     color: "#1a1a1a",
+    width: "100vw",
+    maxWidth: "100vw",
+    overflowX: "hidden",
   },
   sidebar: {
-    width: 280,
-    minWidth: 280,
+    width: 260,
+    minWidth: 220,
     background: "#faf8f3",
     borderRight: "1px solid #e2ddd5",
-    padding: "36px 24px",
+    padding: "36px 18px",
     display: "flex",
     flexDirection: "column",
     gap: 15,
+    boxShadow: "2px 0 8px 0 rgba(0,0,0,0.03)",
+    zIndex: 2,
   },
   sidebarTop: {
     paddingBottom: 20,
@@ -222,11 +227,14 @@ const s: Record<string, React.CSSProperties> = {
   },
   main: {
     flex: 1,
-    padding: "36px 36px",
+    minWidth: 0,
+    padding: "36px 3vw 36px 3vw",
     display: "flex",
     flexDirection: "column",
     gap: 22,
-    overflow: "hidden",
+    overflow: "auto",
+    width: "100%",
+    maxWidth: "100vw",
   },
   pageHeader: {
     display: "flex",
@@ -244,7 +252,7 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 13,
     color: "#9a9690",
   },
-  statsRow: { display: "flex", gap: 10, flexWrap: "wrap" },
+  statsRow: { display: "flex", gap: 10, flexWrap: "wrap", width: "100%" },
   statCard: {
     flex: 1,
     minWidth: 110,
@@ -274,8 +282,12 @@ const s: Record<string, React.CSSProperties> = {
     border: "1px solid #e2ddd5",
     borderRadius: 6,
     background: "#faf8f3",
+    width: "100%",
+    maxWidth: "100vw",
+    marginTop: 8,
+    boxSizing: "border-box",
   },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
+  table: { width: "100%", minWidth: 800, borderCollapse: "collapse", fontSize: 13 },
   th: {
     padding: "13px 18px",
     textAlign: "left",
@@ -723,12 +735,13 @@ export default function ProductSection(): React.ReactElement {
                               onClick={async () => {
                                 // Toggle active/inactive instead of delete
                                 try {
-                                  // Simulate backend update: call deleteProduct for inactive, or re-activate (should be a PATCH in real app)
-                                  // Here, just update local state for demo
                                   setProducts((prev) => prev.map((prod) =>
                                     prod._id === p._id ? { ...prod, is_active: !prod.is_active } : prod
                                   ));
-                                } catch (err) {
+                                  handleDelete(p._id); // Reuse delete endpoint to toggle active status                                } catch (err) {
+                                  alert('Failed to update product status.');
+                                }
+                                catch (err) {
                                   alert('Failed to update product status.');
                                 }
                               }}
