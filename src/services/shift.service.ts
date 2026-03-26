@@ -17,7 +17,7 @@ export const getTodayShift = async () => {
   return res.data;
 };
 
-export const closeShift = async (closingStocks: { product_id: string; closing_stock: number }[], token: string) => {
+export const closeShift = async (closingStocks: { product_id: string; closing_stock: number }[]) => {
   const res = await axios.post(
     `${API_BASE_URL}/api/shifts/close`,
     { closing_stocks: closingStocks },
