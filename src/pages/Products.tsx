@@ -27,6 +27,8 @@ export default function UnifiedInventoryPage() {
     low_stock_threshold: 5
   });
 
+  
+
   const fetchData = async () => {
     try {
       setLoading(true);
