@@ -123,7 +123,7 @@ export default function DashboardPage() {
           <div className="space-y-3">
             <ActionButton label="Add Product" path="/products" color="bg-green-50 text-green-700" icon={<BoxIcon />} />
             <ActionButton label="Daily Sheet" path="/daily" color="bg-purple-50 text-purple-700" icon={<ListIcon />} />
-            <ActionButton label="Add Stock" path="/daily-sheet" color="bg-blue-50 text-blue-700" icon={<PlusIcon />} />
+            <ActionButton label="Add Stock" path="/add-stock" color="bg-blue-50 text-blue-700" icon={<PlusIcon />} />
             <ActionButton label="Reports" path="/reports" color="bg-amber-50 text-amber-700" icon={<ChartIcon />} />
             {data.todayShift && (
               <ActionButton label="Close Shift" path="/daily-sheet" color="bg-red-50 text-red-700" icon={<CloseIcon />} />

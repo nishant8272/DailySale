@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { getAllProducts, updateProduct } from "../services/product.service";
 import type { Product } from "../types/product.types";
 

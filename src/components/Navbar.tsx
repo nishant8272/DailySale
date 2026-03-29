@@ -48,17 +48,10 @@ export default function Navbar() {
     : "sticky top-0 z-50 bg-white border-b border-slate-200 h-16 shadow-sm";
 
   return (
-<<<<<<< HEAD
     <nav className={`${navClasses} flex items-center px-6 md:px-12`}>
       <div className="max-w-350 w-full mx-auto flex justify-between items-center">
 
         {/* LEFT: Logo */}
-=======
-    <nav className={`${navClasses} flex items-center px-4 sm:px-6 lg:px-8`}>
-      <div className="max-w-400 w-full mx-auto flex justify-between items-center">
-        
-        {/* LEFT: Logo Section */}
->>>>>>> 93e9ac1 (re-create product page and update ui)
         <Link to="/" className="flex items-center gap-2 group">
           <div className="w-8 h-8 bg-[#1D9E75] rounded-lg flex items-center justify-center shadow-sm group-hover:rotate-3 transition-transform">
             <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="w-5 h-5">
@@ -106,7 +99,6 @@ export default function Navbar() {
           ) : (
             <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
               <div className="text-right hidden sm:block">
-<<<<<<< HEAD
                 <p className="text-[11px] font-black text-slate-900 leading-tight">{user.name}</p>
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{user.role}</p>
               </div>
@@ -117,15 +109,6 @@ export default function Navbar() {
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center border-2 border-white shadow-sm font-bold text-[#1D9E75] text-sm uppercase cursor-pointer hover:ring-2 hover:ring-[#1D9E75] transition-all"
                 >
-=======
-                <p className="text-[17px] font-black text-slate-900 leading-tight">{user.name}</p>
-                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">
-                  {user.role}
-                </p>
-              </div>
-              <div className="relative group cursor-pointer">
-                <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center border-2 border-white shadow-sm font-bold text-[#1D9E75] text-sm uppercase">
->>>>>>> 93e9ac1 (re-create product page and update ui)
                   {user.name.charAt(0)}
                 </div>
 

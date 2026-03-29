@@ -10,16 +10,13 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Loader from "./components/loader";
 
-
 function AppRoutes() {
   const { loading } = useAuth();
 
   if (loading) return <Loader />;
 
   return (
-<<<<<<< HEAD
-    <>
-      
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
@@ -28,6 +25,7 @@ function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
           <Route path="/daily" element={<DailySales />} />
+          {/* <Route path="/daily-sheet" element={<DailySheet />} /> */}
           <Route path="/shift" element={<ShiftPage />} />
           <Route path="/add-stock" element={<AddStock />} />
         </Route>
@@ -35,35 +33,14 @@ function AppRoutes() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<div className="p-10 text-center text-red-500">404 - Not Found</div>} />
       </Routes>
-    </>
+    </BrowserRouter>
   );
 }
 
 export function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-=======
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/auth" element={<AuthPage />} />
-
-          <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/daily" element={<DailySales />} />
-            {/* <Route path="/daily-sheet" element={<DailySheet />} /> */}
-            <Route path="/shift" element={<ShiftPage />} />
-          </Route>
-
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<div className="p-10 text-center text-red-500">404 - Not Found</div>} />
-        </Routes>
->>>>>>> 93e9ac1 (re-create product page and update ui)
-      </BrowserRouter>
+      <AppRoutes />
     </AuthProvider>
   );
 }
