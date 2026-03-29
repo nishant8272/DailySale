@@ -17,6 +17,7 @@ function AppRoutes() {
   if (loading) return <Loader />;
 
   return (
+<<<<<<< HEAD
     <>
       
       <Routes>
@@ -43,6 +44,25 @@ export function App() {
     <AuthProvider>
       <BrowserRouter>
         <AppRoutes />
+=======
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<AuthPage />} />
+
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/daily" element={<DailySales />} />
+            {/* <Route path="/daily-sheet" element={<DailySheet />} /> */}
+            <Route path="/shift" element={<ShiftPage />} />
+          </Route>
+
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<div className="p-10 text-center text-red-500">404 - Not Found</div>} />
+        </Routes>
+>>>>>>> 93e9ac1 (re-create product page and update ui)
       </BrowserRouter>
     </AuthProvider>
   );

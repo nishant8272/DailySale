@@ -95,7 +95,7 @@ export default function DashboardPage() {
           {!data.todayShift && (
             <button 
               onClick={() => navigate("/daily-sheet")}
-              className="px-6 py-2 bg-[#1D9E75] text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-[#168a65] transition-all active:scale-95"
+              className="px-6 py-2 cursor-pointer bg-[#1D9E75] text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-[#168a65] transition-all active:scale-95"
             >
               Start Today's Shift
             </button>
@@ -179,7 +179,7 @@ function ActionButton({ label, path, color, icon }: { label: string; path: strin
   return (
     <button 
       onClick={() => navigate(path)}
-      className={`w-full flex items-center gap-4 p-3 rounded-xl font-semibold transition-all hover:shadow-md ${color} active:scale-95`}
+      className={`w-full flex cursor-pointer items-center gap-4 p-3 rounded-xl font-semibold transition-all hover:shadow-md ${color} active:scale-95`}
     >
       {icon}
       {label}
