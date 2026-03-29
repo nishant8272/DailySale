@@ -29,6 +29,7 @@ interface UpdateProductPayload {
   current_sell_price?: number;
   current_buy_price?: number;
   low_stock_threshold?: number;
+  current_stock?: number; // ✅ yeh add kiya
 }
 
 interface ApiResponse<T> {
@@ -53,7 +54,6 @@ const buildProductQueryParams = (filters?: ProductListFilters) => {
       : {}),
   };
 };
-
 
 export const getAllProducts = async (
   filters?: ProductListFilters
@@ -123,7 +123,6 @@ export const deleteProduct = async (
   return res.data;
 };
 
-// Same backend endpoint toggles active/inactive
 export const toggleProductStatus = async (
   id: string
 ): Promise<{ success: boolean; message?: string }> => {
