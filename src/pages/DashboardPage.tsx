@@ -95,7 +95,7 @@ export default function DashboardPage() {
           {!data.todayShift && (
             <button 
               onClick={() => navigate("/daily-sheet")}
-              className="px-6 py-2 bg-[#1D9E75] text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-[#168a65] transition-all active:scale-95"
+              className="px-6 py-2 cursor-pointer bg-[#1D9E75] text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-[#168a65] transition-all active:scale-95"
             >
               Start Today's Shift
             </button>
@@ -123,7 +123,7 @@ export default function DashboardPage() {
           <div className="space-y-3">
             <ActionButton label="Add Product" path="/products" color="bg-green-50 text-green-700" icon={<BoxIcon />} />
             <ActionButton label="Daily Sheet" path="/daily" color="bg-purple-50 text-purple-700" icon={<ListIcon />} />
-            <ActionButton label="Add Stock" path="/daily-sheet" color="bg-blue-50 text-blue-700" icon={<PlusIcon />} />
+            <ActionButton label="Add Stock" path="/add-stock" color="bg-blue-50 text-blue-700" icon={<PlusIcon />} />
             <ActionButton label="Reports" path="/reports" color="bg-amber-50 text-amber-700" icon={<ChartIcon />} />
             {data.todayShift && (
               <ActionButton label="Close Shift" path="/daily-sheet" color="bg-red-50 text-red-700" icon={<CloseIcon />} />
@@ -179,7 +179,7 @@ function ActionButton({ label, path, color, icon }: { label: string; path: strin
   return (
     <button 
       onClick={() => navigate(path)}
-      className={`w-full flex items-center gap-4 p-3 rounded-xl font-semibold transition-all hover:shadow-md ${color} active:scale-95`}
+      className={`w-full flex cursor-pointer items-center gap-4 p-3 rounded-xl font-semibold transition-all hover:shadow-md ${color} active:scale-95`}
     >
       {icon}
       {label}

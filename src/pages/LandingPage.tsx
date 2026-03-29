@@ -54,7 +54,7 @@ export default function LandingPage(): React.ReactElement {
           ))}
           <button
             onClick={() => navigate("/auth")}
-            className="bg-[#1D9E75] text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-[#168a65] transition-all"
+            className="bg-[#1D9E75] cursor-pointer text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-[#168a65] transition-all"
           >
             Sign In
           </button>
@@ -85,7 +85,7 @@ export default function LandingPage(): React.ReactElement {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <button
               onClick={() => navigate("/auth")}
-              className="w-full sm:w-auto px-8 py-4 bg-[#1D9E75] text-white rounded-2xl font-bold text-lg shadow-xl shadow-green-200/50 hover:bg-[#168a65] hover:-translate-y-1 transition-all"
+              className="w-full sm:w-auto px-8 py-4 cursor-pointer bg-[#1D9E75] text-white rounded-2xl font-bold text-lg shadow-xl shadow-green-200/50 hover:bg-[#168a65] hover:-translate-y-1 transition-all"
             >
               Start Today's Shift
             </button>

@@ -8,7 +8,7 @@ const Loader = ({ onDone }: { onDone?: () => void }) => {
     const timer = setTimeout(() => {
       setVisible(false);
       onDone?.();
-    }, 1000); // ✅ 1 second
+    }, 500);
     return () => clearTimeout(timer);
   }, []);
 
