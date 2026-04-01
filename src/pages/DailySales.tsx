@@ -1,9 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { getAllProducts } from "../services/product.service";
 import { getDailyReport, closeShift } from "../services/shift.service";
+import { fetchShopUsersApi } from "../services/user.service";
 import type { DailyReportProduct, DailyReport } from "../types/dailyreport.types";
 import type { Product } from "../types/product.types";
-import { ShoppingBag, CheckCircle, Loader2, Package, Save, CalendarDays } from "lucide-react";
+import type { AuthUser } from "../types/auth.types";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { ShoppingBag, CheckCircle, Loader2, Package, Save, CalendarDays, Users, ArrowRight, X } from "lucide-react";
 
 const getDaysInMonth = (year: number, month: number) => {
   const date = new Date(year, month, 1);
@@ -18,15 +22,23 @@ const DAY_COL_W     = 52;
 const TODAY_COL_W   = 110;
 
 const DailySales: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   // Add is_active to each row for UI logic
   const [products, setProducts] = useState<(DailyReportProduct & { is_active: boolean })[]>([]);
   const [closingStocks, setClosingStocks] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading]         = useState(false);
+  const [workers, setWorkers]             = useState<AuthUser[]>([]);
+  const [showNextShiftPrompt, setShowNextShiftPrompt] = useState(false);
+  const [selectedWorkerId, setSelectedWorkerId]       = useState("");
+  const [isLoadingWorkers, setIsLoadingWorkers]       = useState(false);
   const [today, setToday]                 = useState<string>("");
   const [days, setDays]                   = useState<Date[]>([]);
   const [refreshFlag, setRefreshFlag]     = useState(0);
   const scrollRef  = useRef<HTMLDivElement>(null);
   const todayThRef = useRef<HTMLTableCellElement>(null);
+
+  const activeShiftUsers = workers.filter((shopUser) => shopUser.is_active !== false);
 
   useEffect(() => {
     const now = new Date();
@@ -88,6 +100,27 @@ const DailySales: React.FC = () => {
     fetchData();
   }, [today, refreshFlag]);
 
+  useEffect(() => {
+    const loadWorkers = async () => {
+      if (user?.role !== "owner") return;
+
+      setIsLoadingWorkers(true);
+      try {
+        const shopUsers = await fetchShopUsersApi();
+        setWorkers(shopUsers);
+        const firstActiveUser = shopUsers.find((shopUser) => shopUser.is_active !== false);
+        setSelectedWorkerId(firstActiveUser?._id || "");
+      } catch {
+        setWorkers([]);
+        setSelectedWorkerId("");
+      } finally {
+        setIsLoadingWorkers(false);
+      }
+    };
+
+    loadWorkers();
+  }, [user?.role]);
+
   const handleClosingStockChange = (product_id: string, value: string) => {
     // Strip leading zeros: "020" → "20", keep empty string as-is
     const cleaned = value === "" ? "" : String(parseInt(value, 10) || 0);
@@ -102,9 +135,26 @@ const DailySales: React.FC = () => {
       }));
       await closeShift(closingArr);
       setRefreshFlag((f) => f + 1);
-      alert("Closing stock saved!");
-    } catch { alert("Failed to save closing stock"); }
+      if (user?.role === "owner") {
+        setShowNextShiftPrompt(true);
+      } else {
+        alert("Closing stock saved!");
+      }
+    } catch {
+      alert("Failed to save closing stock");
+    }
     setIsLoading(false);
+  };
+
+  const handleContinueNextShift = () => {
+    if (selectedWorkerId) {
+      localStorage.setItem("pending_shift_worker_id", selectedWorkerId);
+    } else {
+      localStorage.removeItem("pending_shift_worker_id");
+    }
+
+    setShowNextShiftPrompt(false);
+    navigate("/shift");
   };
 
   const todayDateObj      = today ? new Date(today) : new Date();
@@ -132,6 +182,66 @@ const DailySales: React.FC = () => {
               <ShoppingBag className="h-5 w-5 text-white" />
             </div>
             <div>
+
+            {showNextShiftPrompt && user?.role === "owner" && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4">
+                <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl shadow-slate-950/20">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                        <Users className="h-5 w-5" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900">Prepare the next shift</h3>
+                      <p className="mt-1 text-sm text-slate-500">Choose the person who will attend the next shift.</p>
+                    </div>
+                    <button
+                      onClick={() => setShowNextShiftPrompt(false)}
+                      className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                      aria-label="Close next shift prompt"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div className="mt-6 space-y-3">
+                    <label className="block text-sm font-semibold text-slate-700">Attendee</label>
+                    <select
+                      value={selectedWorkerId}
+                      onChange={(e) => setSelectedWorkerId(e.target.value)}
+                      disabled={isLoadingWorkers}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white disabled:cursor-not-allowed"
+                    >
+                      <option value="">Select person for the next shift</option>
+                      {activeShiftUsers.map((shopUser) => (
+                        <option key={shopUser._id} value={shopUser._id}>
+                          {shopUser.name}{shopUser.phone ? ` (${shopUser.phone})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {activeShiftUsers.length === 0 && !isLoadingWorkers && (
+                      <p className="text-xs text-amber-600">No active users found. You can continue to the shift page and choose later.</p>
+                    )}
+                  </div>
+
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      onClick={() => setShowNextShiftPrompt(false)}
+                      className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Later
+                    </button>
+                    <button
+                      onClick={handleContinueNextShift}
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={isLoadingWorkers}
+                    >
+                      Continue
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Daily Sales Entry</h1>
               <p className="text-xs text-slate-400 mt-0.5">{todayLabel}</p>
             </div>

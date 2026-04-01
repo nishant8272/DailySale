@@ -1,15 +1,27 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { fetchShopUsersApi } from '../services/user.service';
+import {
+  getTodayShift as getTodayShiftApi,
+  startShift as startShiftApi,
+  closeShift as closeShiftApi,
+} from '../services/shift.service';
+import type { AuthUser } from '../types/auth.types';
+import { useAuth } from '../context/AuthContext';
 
 export default function ShiftPage() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activeShift, setActiveShift] = useState<any>(null);
   const [closingStocks, setClosingStocks] = useState<{ [key: string]: number }>({});
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [pendingWorkerId, setPendingWorkerId] = useState<string>(localStorage.getItem("pending_shift_worker_id") || "");
+  const [shopUsers, setShopUsers] = useState<AuthUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   const fetchShiftStatus = async () => {
     try {
-      const res = await axios.get('/api/shifts/today');
+      const res = await getTodayShiftApi();
       setActiveShift(res.data.data);
     } catch (err) {
       setActiveShift(null); // No shift started today
@@ -18,13 +30,47 @@ export default function ShiftPage() {
     }
   };
 
-  useEffect(() => { fetchShiftStatus(); }, []);
+  const fetchShopUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const users = await fetchShopUsersApi();
+      setShopUsers(users);
+
+      // Preselect owner/worker from prior handoff if present; else first active user.
+      if (!pendingWorkerId) {
+        const firstActiveUser = users.find((u) => u.is_active !== false);
+        if (firstActiveUser) {
+          setPendingWorkerId(firstActiveUser._id);
+        }
+      }
+    } catch {
+      setShopUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchShiftStatus();
+    fetchShopUsers();
+  }, []);
 
   const handleStartShift = async () => {
     try {
-      await axios.post('/api/shifts/start');
+      const selectedWorkerId = user?.role === 'owner' && pendingWorkerId ? pendingWorkerId : undefined;
+      await startShiftApi(selectedWorkerId);
+      localStorage.removeItem("pending_shift_worker_id");
+      setPendingWorkerId("");
       fetchShiftStatus();
     } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const message =
+          (err.response?.data as { message?: string } | undefined)?.message ||
+          "Error starting shift. Ensure yesterday's shift is closed.";
+        alert(message);
+        return;
+      }
+
       alert("Error starting shift. Ensure yesterday's shift is closed.");
     }
   };
@@ -37,18 +83,25 @@ export default function ShiftPage() {
         closing_stock: closingStocks[id]
       }));
 
-      await axios.post('/api/shifts/close', { closing_stocks: formattedStocks });
+      await closeShiftApi(formattedStocks);
       alert("Shift Closed Successfully!");
       fetchShiftStatus();
       setShowCloseModal(false);
     } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const message =
+          (err.response?.data as { message?: string } | undefined)?.message ||
+          "Error closing shift. Check your numbers.";
+        alert(message);
+        return;
+      }
+
       alert("Error closing shift. Check your numbers.");
     }
   };
 
   if (loading) return <div className="p-10 text-center text-gray-500">Loading Shift Data...</div>;
 
-  // CASE 1: NO SHIFT STARTED
   if (!activeShift) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] p-6 text-center">
@@ -59,6 +112,56 @@ export default function ShiftPage() {
         <p className="text-gray-500 mt-2 mb-8 max-w-sm">
           Starting the shift will pull yesterday's closing stock as today's opening stock.
         </p>
+
+        <div className="w-full max-w-xl mb-6 text-left">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Users in this shop</h2>
+          {loadingUsers ? (
+            <p className="text-sm text-gray-500">Loading users...</p>
+          ) : shopUsers.length === 0 ? (
+            <p className="text-sm text-gray-500">No users found for this shop.</p>
+          ) : (
+            <div className="space-y-2 bg-white border border-gray-200 rounded-xl p-3">
+              {shopUsers.map((shopUser) => {
+                const inactive = shopUser.is_active === false;
+                const selected = pendingWorkerId === shopUser._id;
+
+                return (
+                  <label
+                    key={shopUser._id}
+                    className={`flex items-center justify-between gap-3 p-3 rounded-lg border ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'} ${inactive ? 'opacity-60' : ''}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="shift_user"
+                        disabled={user?.role !== 'owner' || inactive}
+                        checked={selected}
+                        onChange={() => {
+                          setPendingWorkerId(shopUser._id);
+                          localStorage.setItem('pending_shift_worker_id', shopUser._id);
+                        }}
+                      />
+                      <div>
+                        <p className="font-medium text-gray-800">{shopUser.name}</p>
+                        <p className="text-xs text-gray-500">{shopUser.phone}</p>
+                      </div>
+                    </div>
+                    <div className="text-xs flex items-center gap-2">
+                      <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">{shopUser.role}</span>
+                      <span className={`px-2 py-1 rounded-full ${inactive ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                        {inactive ? 'Inactive' : 'Active'}
+                      </span>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+          {user?.role !== 'owner' && (
+            <p className="text-xs text-gray-500 mt-2">Only owner can select who will attend the shift.</p>
+          )}
+        </div>
+
         <button 
           onClick={handleStartShift}
           className="bg-blue-600 text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg"

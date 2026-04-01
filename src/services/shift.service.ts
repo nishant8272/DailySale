@@ -25,3 +25,12 @@ export const closeShift = async (closingStocks: { product_id: string; closing_st
   );
   return res.data;
 };
+
+export const startShift = async (workerId?: string) => {
+  const res = await axios.post(
+    `${API_BASE_URL}/api/shifts/start`,
+    workerId ? { worker_id: workerId } : {},
+    { headers: { Authorization: `Bearer ${localStorageKey()}` } }
+  );
+  return res.data;
+};

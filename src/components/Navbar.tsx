@@ -35,7 +35,7 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Dashboard", path: "/dashboard", icon: "📊", roles: ["owner", "worker"] },
-    { name: "Daily Sheet", path: "/daily-sheet", icon: "📝", roles: ["owner", "worker"] },
+    { name: "Daily Sheet", path: "/daily", icon: "📝", roles: ["owner", "worker"] },
     { name: "Products", path: "/products", icon: "📦", roles: ["owner"] },
     { name: "Add Stock", path: "/add-stock", icon: "➕", roles: ["owner"] }, // ✅ added
     { name: "Reports", path: "/reports", icon: "📈", roles: ["owner"] },
