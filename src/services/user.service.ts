@@ -8,6 +8,23 @@ export type MyProfileResponse = {
 	shop: Shop;
 };
 
+export type CreateWorkerInput = {
+	name: string;
+	phone: string;
+	password: string;
+	email?: string;
+};
+
+type ApiError = Error & {
+	status?: number;
+};
+
+const toApiError = (message: string, status?: number): ApiError => {
+	const error = new Error(message) as ApiError;
+	error.status = status;
+	return error;
+};
+
 export const fetchMyProfileApi = async (): Promise<MyProfileResponse> => {
 	const token = localStorage.getItem("token");
 
@@ -40,22 +57,88 @@ export const fetchMyProfileApi = async (): Promise<MyProfileResponse> => {
 		};
 	} catch (error) {
 		if (axios.isAxiosError(error)) {
-			if (error.response?.status === 401) {
-				localStorage.removeItem("token");
-				window.location.href = "/auth";
-			}
-
+			const status = error.response?.status;
 			const message =
 				(error.response?.data as { message?: string } | undefined)?.message ||
 				"Failed to fetch profile";
-			throw new Error(message);
+			throw toApiError(message, status);
 		}
 
-		throw new Error("Failed to fetch profile");
+		throw toApiError("Failed to fetch profile");
 	}
 };
 
 export const getCurrentUserApi = async (): Promise<AuthUser> => {
 	const profile = await fetchMyProfileApi();
 	return profile.user;
+};
+
+const getAuthHeader = () => {
+	const token = localStorage.getItem("token");
+
+	if (!token) {
+		throw new Error("Missing auth token");
+	}
+
+	return {
+		Authorization: `Bearer ${token}`,
+	};
+};
+
+export const fetchShopUsersApi = async (): Promise<AuthUser[]> => {
+	try {
+		const response = await axios.get(`${API_BASE_URL}/api/users`, {
+			headers: getAuthHeader(),
+		});
+
+		const payload = response.data as {
+			message?: string;
+			data?: AuthUser[];
+		};
+
+		if (!Array.isArray(payload.data)) {
+			throw new Error(payload.message || "Failed to fetch workers");
+		}
+
+		return payload.data;
+	} catch (error) {
+		if (axios.isAxiosError(error)) {
+			const status = error.response?.status;
+			const message =
+				(error.response?.data as { message?: string } | undefined)?.message ||
+				"Failed to fetch workers";
+			throw toApiError(message, status);
+		}
+
+		throw toApiError("Failed to fetch workers");
+	}
+};
+
+export const createWorkerApi = async (input: CreateWorkerInput): Promise<AuthUser> => {
+	try {
+		const response = await axios.post(`${API_BASE_URL}/api/users`, input, {
+			headers: getAuthHeader(),
+		});
+
+		const payload = response.data as {
+			message?: string;
+			data?: AuthUser;
+		};
+
+		if (!payload.data) {
+			throw new Error(payload.message || "Failed to create worker");
+		}
+
+		return payload.data;
+	} catch (error) {
+		if (axios.isAxiosError(error)) {
+			const status = error.response?.status;
+			const message =
+				(error.response?.data as { message?: string } | undefined)?.message ||
+				"Failed to create worker";
+			throw toApiError(message, status);
+		}
+
+		throw toApiError("Failed to create worker");
+	}
 };

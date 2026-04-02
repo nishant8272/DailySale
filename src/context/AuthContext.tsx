@@ -28,7 +28,16 @@
             setUser(profile.user);
             setShop(profile.shop);
           } catch (err) {
-            localStorage.removeItem("token");
+            const status = (err as { status?: number })?.status;
+
+            // Only clear session for real auth failures.
+            if (status === 401 || status === 403) {
+              localStorage.removeItem("token");
+              setUser(null);
+              setShop(null);
+            } else {
+              console.error("Auth bootstrap failed", err);
+            }
           }
         }
         setLoading(false);
