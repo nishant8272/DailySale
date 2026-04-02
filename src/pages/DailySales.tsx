@@ -6,7 +6,7 @@ import type { DailyReportProduct, DailyReport } from "../types/dailyreport.types
 import type { Product } from "../types/product.types";
 import type { AuthUser } from "../types/auth.types";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ShoppingBag, CheckCircle, Loader2, Package, Save, CalendarDays, Users, ArrowRight, X } from "lucide-react";
 
 const getDaysInMonth = (year: number, month: number) => {
@@ -24,6 +24,7 @@ const TODAY_COL_W   = 110;
 const DailySales: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   // Add is_active to each row for UI logic
   const [products, setProducts] = useState<(DailyReportProduct & { is_active: boolean })[]>([]);
   const [closingStocks, setClosingStocks] = useState<Record<string, string>>({});
@@ -41,10 +42,20 @@ const DailySales: React.FC = () => {
   const activeShiftUsers = workers.filter((shopUser) => shopUser.is_active !== false);
 
   useEffect(() => {
-    const now = new Date();
+    const params = new URLSearchParams(location.search);
+    const selectedDate = params.get("date");
+    const now = selectedDate ? new Date(`${selectedDate}T00:00:00`) : new Date();
+
+    if (Number.isNaN(now.getTime())) {
+      const fallback = new Date();
+      setToday(formatDate(fallback));
+      setDays(getDaysInMonth(fallback.getFullYear(), fallback.getMonth()));
+      return;
+    }
+
     setToday(formatDate(now));
     setDays(getDaysInMonth(now.getFullYear(), now.getMonth()));
-  }, []);
+  }, [location.search]);
 
   // Scroll so 1 previous day + today are visible at the left edge
   useEffect(() => {

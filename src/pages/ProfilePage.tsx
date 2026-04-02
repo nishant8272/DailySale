@@ -1,6 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "../context/AuthContext";
-import { createWorkerApi, fetchShopUsersApi, type CreateWorkerInput } from "../services/user.service";
+import {
+  createWorkerApi,
+  fetchShopUsersApi,
+  updateMyProfileApi,
+  updateUserByIdApi,
+  type CreateWorkerInput,
+} from "../services/user.service";
+import { updateMyShopApi } from "../services/shop.service";
 import type { AuthUser } from "../types/auth.types";
 
 type WorkerFormState = CreateWorkerInput;
@@ -13,14 +20,33 @@ const initialFormState: WorkerFormState = {
 };
 
 export default function ProfilePage() {
-  const { user, shop } = useAuth();
+  const { user, shop, setUser, setShop } = useAuth();
   const [workers, setWorkers] = useState<AuthUser[]>([]);
   const [loadingWorkers, setLoadingWorkers] = useState(true);
   const [creatingWorker, setCreatingWorker] = useState(false);
+  const [savingOwner, setSavingOwner] = useState(false);
+  const [savingWorkerId, setSavingWorkerId] = useState<string | null>(null);
   const [workersError, setWorkersError] = useState<string>("");
   const [formError, setFormError] = useState<string>("");
   const [formSuccess, setFormSuccess] = useState<string>("");
+  const [ownerFormError, setOwnerFormError] = useState<string>("");
+  const [ownerFormSuccess, setOwnerFormSuccess] = useState<string>("");
+  const [workerEditError, setWorkerEditError] = useState<string>("");
+  const [workerEditSuccess, setWorkerEditSuccess] = useState<string>("");
   const [formState, setFormState] = useState<WorkerFormState>(initialFormState);
+  const [editingOwner, setEditingOwner] = useState(false);
+  const [editingWorkerId, setEditingWorkerId] = useState<string | null>(null);
+  const [ownerForm, setOwnerForm] = useState({
+    name: user?.name || "",
+    phone: user?.phone || "",
+    email: user?.email || "",
+    shopName: shop?.name || "",
+  });
+  const [workerEditForm, setWorkerEditForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+  });
 
   const isOwner = user?.role === "owner";
 
@@ -28,6 +54,15 @@ export default function ProfilePage() {
     () => workers.filter((shopUser) => shopUser.role === "worker"),
     [workers]
   );
+
+  useEffect(() => {
+    setOwnerForm({
+      name: user?.name || "",
+      phone: user?.phone || "",
+      email: user?.email || "",
+      shopName: shop?.name || "",
+    });
+  }, [shop?.name, user]);
 
   useEffect(() => {
     const loadWorkers = async () => {
@@ -51,7 +86,7 @@ export default function ProfilePage() {
     setFormState((prev) => ({ ...prev, [field]: value }));
   };
 
-  const onCreateWorker = async (event :any) => {
+  const onCreateWorker = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError("");
     setFormSuccess("");
@@ -93,30 +128,201 @@ export default function ProfilePage() {
     }
   };
 
+  const onStartOwnerEdit = () => {
+    setOwnerFormError("");
+    setOwnerFormSuccess("");
+    setOwnerForm({
+      name: user?.name || "",
+      phone: user?.phone || "",
+      email: user?.email || "",
+      shopName: shop?.name || "",
+    });
+    setEditingOwner(true);
+  };
+
+  const onSaveOwner = async () => {
+    setOwnerFormError("");
+    setOwnerFormSuccess("");
+
+    if (!ownerForm.name.trim() || !ownerForm.phone.trim() || !ownerForm.shopName.trim()) {
+      setOwnerFormError("Name, phone, and shop name are required.");
+      return;
+    }
+
+    try {
+      setSavingOwner(true);
+      const profilePromise = updateMyProfileApi({
+        name: ownerForm.name.trim(),
+        phone: ownerForm.phone.trim(),
+        email: ownerForm.email.trim(),
+      });
+      const shopPromise = updateMyShopApi({
+        name: ownerForm.shopName.trim(),
+      });
+
+      const [updatedUser, updatedShop] = await Promise.all([profilePromise, shopPromise]);
+
+      setUser(updatedUser);
+      setShop({
+        _id: String(updatedShop._id),
+        name: updatedShop.name,
+        owner_name: updatedShop.owner_name,
+        address: updatedShop.address,
+      });
+      setWorkers((prev) =>
+        prev.map((shopUser) =>
+          shopUser._id === updatedUser._id ? { ...shopUser, ...updatedUser } : shopUser
+        )
+      );
+
+      setOwnerFormSuccess("Profile updated successfully.");
+      setEditingOwner(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update profile";
+      setOwnerFormError(message);
+    } finally {
+      setSavingOwner(false);
+    }
+  };
+
+  const onStartWorkerEdit = (worker: AuthUser) => {
+    setWorkerEditError("");
+    setWorkerEditSuccess("");
+    setEditingWorkerId(worker._id);
+    setWorkerEditForm({
+      name: worker.name,
+      phone: worker.phone,
+      email: worker.email || "",
+    });
+  };
+
+  const onCancelWorkerEdit = () => {
+    setEditingWorkerId(null);
+    setWorkerEditError("");
+  };
+
+  const onSaveWorker = async (workerId: string) => {
+    setWorkerEditError("");
+    setWorkerEditSuccess("");
+
+    if (!workerEditForm.name.trim() || !workerEditForm.phone.trim()) {
+      setWorkerEditError("Name and phone are required.");
+      return;
+    }
+
+    try {
+      setSavingWorkerId(workerId);
+      const updatedWorker = await updateUserByIdApi(workerId, {
+        name: workerEditForm.name.trim(),
+        phone: workerEditForm.phone.trim(),
+        email: workerEditForm.email.trim(),
+      });
+
+      setWorkers((prev) =>
+        prev.map((shopUser) =>
+          shopUser._id === updatedWorker._id ? { ...shopUser, ...updatedWorker } : shopUser
+        )
+      );
+
+      setEditingWorkerId(null);
+      setWorkerEditSuccess("Worker updated successfully.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update worker";
+      setWorkerEditError(message);
+    } finally {
+      setSavingWorkerId(null);
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="mx-auto w-full max-w-350 space-y-6 animate-in fade-in duration-300">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500 font-bold">Profile</p>
             <h1 className="text-2xl font-black text-slate-900 mt-1">{user?.name || "User"}</h1>
             <p className="text-sm text-slate-500 mt-1">Manage account details and shop team members.</p>
           </div>
-          <span className="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-green-700">
-            {user?.role || "member"}
-          </span>
+          <div className="flex items-center gap-2">
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (editingOwner) {
+                    setEditingOwner(false);
+                    setOwnerFormError("");
+                  } else {
+                    onStartOwnerEdit();
+                  }
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                {editingOwner ? "Cancel" : "Edit Profile"}
+              </button>
+            )}
+            <span className="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-green-700">
+              {user?.role || "member"}
+            </span>
+          </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InfoCard label="Name" value={user?.name || "-"} />
-          <InfoCard label="Phone" value={user?.phone || "-"} />
-          <InfoCard label="Email" value={user?.email || "Not set"} />
-          <InfoCard label="Shop" value={shop?.name || "-"} />
-        </div>
+        {!editingOwner && (
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <InfoCard label="Name" value={user?.name || "-"} />
+            <InfoCard label="Phone" value={user?.phone || "-"} />
+            <InfoCard label="Email" value={user?.email || "Not set"} />
+            <InfoCard label="Shop" value={shop?.name || "-"} />
+          </div>
+        )}
+
+        {editingOwner && (
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <InputField
+              label="Your Name"
+              placeholder="Enter your name"
+              value={ownerForm.name}
+              onChange={(value) => setOwnerForm((prev) => ({ ...prev, name: value }))}
+            />
+            <InputField
+              label="Phone"
+              placeholder="Enter phone number"
+              value={ownerForm.phone}
+              onChange={(value) => setOwnerForm((prev) => ({ ...prev, phone: value }))}
+            />
+            <InputField
+              label="Email"
+              placeholder="owner@example.com"
+              value={ownerForm.email}
+              onChange={(value) => setOwnerForm((prev) => ({ ...prev, email: value }))}
+              type="email"
+            />
+            <InputField
+              label="Shop Name"
+              placeholder="Enter shop name"
+              value={ownerForm.shopName}
+              onChange={(value) => setOwnerForm((prev) => ({ ...prev, shopName: value }))}
+            />
+
+            <div className="md:col-span-2 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-h-5 text-sm">
+                {ownerFormError && <p className="text-red-600">{ownerFormError}</p>}
+                {ownerFormSuccess && <p className="text-green-700">{ownerFormSuccess}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={onSaveOwner}
+                disabled={savingOwner}
+                className="rounded-xl bg-[#1D9E75] px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#168a65] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingOwner ? "Saving..." : "Save Profile"}
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {isOwner && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Add Worker</h2>
@@ -169,7 +375,7 @@ export default function ProfilePage() {
         </section>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Workers</h2>
@@ -194,6 +400,12 @@ export default function ProfilePage() {
 
         {!loadingWorkers && !workersError && filteredWorkers.length > 0 && (
           <div className="mt-4 overflow-x-auto">
+            {(workerEditError || workerEditSuccess) && (
+              <div className="mb-3 text-sm">
+                {workerEditError && <p className="text-red-600">{workerEditError}</p>}
+                {workerEditSuccess && <p className="text-green-700">{workerEditSuccess}</p>}
+              </div>
+            )}
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="text-left text-slate-500 border-b border-slate-200">
@@ -201,14 +413,51 @@ export default function ProfilePage() {
                   <th className="py-2 pr-3 font-semibold">Phone</th>
                   <th className="py-2 pr-3 font-semibold">Email</th>
                   <th className="py-2 pr-3 font-semibold">Status</th>
+                  {isOwner && <th className="py-2 pr-3 font-semibold">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {filteredWorkers.map((worker) => (
                   <tr key={worker._id} className="border-b border-slate-100 text-slate-700">
-                    <td className="py-2 pr-3 font-medium">{worker.name}</td>
-                    <td className="py-2 pr-3">{worker.phone}</td>
-                    <td className="py-2 pr-3">{worker.email || "-"}</td>
+                    <td className="py-2 pr-3 font-medium">
+                      {editingWorkerId === worker._id ? (
+                        <input
+                          value={workerEditForm.name}
+                          onChange={(event) =>
+                            setWorkerEditForm((prev) => ({ ...prev, name: event.target.value }))
+                          }
+                          className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm outline-none focus:border-[#1D9E75]"
+                        />
+                      ) : (
+                        worker.name
+                      )}
+                    </td>
+                    <td className="py-2 pr-3">
+                      {editingWorkerId === worker._id ? (
+                        <input
+                          value={workerEditForm.phone}
+                          onChange={(event) =>
+                            setWorkerEditForm((prev) => ({ ...prev, phone: event.target.value }))
+                          }
+                          className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm outline-none focus:border-[#1D9E75]"
+                        />
+                      ) : (
+                        worker.phone
+                      )}
+                    </td>
+                    <td className="py-2 pr-3">
+                      {editingWorkerId === worker._id ? (
+                        <input
+                          value={workerEditForm.email}
+                          onChange={(event) =>
+                            setWorkerEditForm((prev) => ({ ...prev, email: event.target.value }))
+                          }
+                          className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm outline-none focus:border-[#1D9E75]"
+                        />
+                      ) : (
+                        worker.email || "-"
+                      )}
+                    </td>
                     <td className="py-2 pr-3">
                       <span
                         className={`rounded-full px-2 py-1 text-[11px] font-bold uppercase tracking-wide ${
@@ -220,6 +469,37 @@ export default function ProfilePage() {
                         {worker.is_active === false ? "Inactive" : "Active"}
                       </span>
                     </td>
+                    {isOwner && (
+                      <td className="py-2 pr-3">
+                        {editingWorkerId === worker._id ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => onSaveWorker(worker._id)}
+                              disabled={savingWorkerId === worker._id}
+                              className="rounded-lg bg-[#1D9E75] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#168a65] disabled:opacity-60"
+                            >
+                              {savingWorkerId === worker._id ? "Saving..." : "Save"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={onCancelWorkerEdit}
+                              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onStartWorkerEdit(worker)}
+                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
