@@ -52,7 +52,7 @@ export default function Navbar() {
       <div className="max-w-350 w-full mx-auto flex justify-between items-center">
 
         {/* LEFT: Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
+        <Link to="/dashboard" className="flex items-center gap-2 group">
           <div className="w-8 h-8 bg-[#1D9E75] rounded-lg flex items-center justify-center shadow-sm group-hover:rotate-3 transition-transform">
             <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="w-5 h-5">
               <path d="M3 3v18h18" strokeLinecap="round" strokeLinejoin="round" />
