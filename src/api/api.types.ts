@@ -79,6 +79,12 @@ export interface WeeklyReport {
   week_total_profit: number;
   week_total_units: number;
   best_day: { date: string; revenue: number } | null;
+  top_products?: {
+    product_name: string;
+    units_sold: number;
+    revenue: number;
+    profit: number;
+  }[];
   daily_breakdown: {
     date: string;
     revenue: number;

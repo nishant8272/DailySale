@@ -94,7 +94,7 @@ export default function DashboardPage() {
           
           {!data.todayShift && (
             <button 
-              onClick={() => navigate("/daily-sheet")}
+              onClick={() => navigate("/daily")}
               className="px-6 py-2 cursor-pointer bg-[#1D9E75] text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-[#168a65] transition-all active:scale-95"
             >
               Start Today's Shift

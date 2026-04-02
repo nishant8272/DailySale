@@ -7,6 +7,7 @@ import Dashboard from "./pages/DashboardPage";
 import ShiftPage from "./pages/ShiftPage";
 import AddStock from "./pages/AddStock";
 import ProfilePage from "./pages/ProfilePage";
+import ReportsPage from "./pages/ReportsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Loader from "./components/loader";
@@ -26,9 +27,11 @@ function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
           <Route path="/daily" element={<DailySales />} />
+          <Route path="/daily-sheet" element={<DailySales />} />
           <Route path="/shift" element={<ShiftPage />} />
           <Route path="/add-stock" element={<AddStock />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/reports" element={<ReportsPage />} />
         </Route>
 
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

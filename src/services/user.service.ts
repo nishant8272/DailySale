@@ -15,6 +15,12 @@ export type CreateWorkerInput = {
 	email?: string;
 };
 
+export type UpdateUserInput = {
+	name?: string;
+	phone?: string;
+	email?: string;
+};
+
 type ApiError = Error & {
 	status?: number;
 };
@@ -140,5 +146,66 @@ export const createWorkerApi = async (input: CreateWorkerInput): Promise<AuthUse
 		}
 
 		throw toApiError("Failed to create worker");
+	}
+};
+
+export const updateMyProfileApi = async (input: UpdateUserInput): Promise<AuthUser> => {
+	try {
+		const response = await axios.patch(`${API_BASE_URL}/api/users/me`, input, {
+			headers: getAuthHeader(),
+		});
+
+		const payload = response.data as {
+			message?: string;
+			data?: AuthUser;
+		};
+
+		if (!payload.data) {
+			throw new Error(payload.message || "Failed to update profile");
+		}
+
+		return payload.data;
+	} catch (error) {
+		if (axios.isAxiosError(error)) {
+			const status = error.response?.status;
+			const message =
+				(error.response?.data as { message?: string } | undefined)?.message ||
+				"Failed to update profile";
+			throw toApiError(message, status);
+		}
+
+		throw toApiError("Failed to update profile");
+	}
+};
+
+export const updateUserByIdApi = async (
+	userId: string,
+	input: UpdateUserInput
+): Promise<AuthUser> => {
+	try {
+		const response = await axios.patch(`${API_BASE_URL}/api/users/${userId}`, input, {
+			headers: getAuthHeader(),
+		});
+
+		const payload = response.data as {
+			message?: string;
+			data?: AuthUser;
+		};
+
+		if (!payload.data) {
+			throw new Error(payload.message || "Failed to update worker");
+		}
+
+		return payload.data;
+	} catch (error) {
+		if (axios.isAxiosError(error)) {
+			const status = error.response?.status;
+			const message =
+				(error.response?.data as { message?: string } | undefined)?.message ||
+				"Failed to update worker";
+			throw toApiError(message, status);
+		}
+
+		throw toApiError("Failed to update worker");
 	}
 };
