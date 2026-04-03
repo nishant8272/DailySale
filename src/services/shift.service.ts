@@ -34,3 +34,18 @@ export const startShift = async (workerId?: string) => {
   );
   return res.data;
 };
+
+export const addStockToShift = async (payload: {
+  product_id: string;
+  quantity_added: number;
+  new_buy_price: number;
+  new_sell_price?: number;
+  note?: string;
+}) => {
+  const res = await axios.post(
+    `${API_BASE_URL}/api/shifts/add-stock`,
+    payload,
+    { headers: { Authorization: `Bearer ${localStorageKey()}` } }
+  );
+  return res.data;
+};

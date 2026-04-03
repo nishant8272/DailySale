@@ -25,7 +25,6 @@ const fetchWithAuth = async (path: string): Promise<any> => {
     const response = await axios.get(`${API_BASE_URL}/api${path}`, {
       headers: getAuthHeaders(),
     });
-    console.log(response.data.dashboardData.todayShift)
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {

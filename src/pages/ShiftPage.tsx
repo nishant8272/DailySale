@@ -8,6 +8,8 @@ import {
 } from '../services/shift.service';
 import type { AuthUser } from '../types/auth.types';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router';
+import toast from 'react-hot-toast';
 
 export default function ShiftPage() {
   const { user } = useAuth();
@@ -18,6 +20,7 @@ export default function ShiftPage() {
   const [pendingWorkerId, setPendingWorkerId] = useState<string>(localStorage.getItem("pending_shift_worker_id") || "");
   const [shopUsers, setShopUsers] = useState<AuthUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const navigate = useNavigate();
 
   const fetchShiftStatus = async () => {
     try {
@@ -57,9 +60,13 @@ export default function ShiftPage() {
 
   const handleStartShift = async () => {
     try {
+      toast.loading("Starting shift...");
       const selectedWorkerId = user?.role === 'owner' && pendingWorkerId ? pendingWorkerId : undefined;
       await startShiftApi(selectedWorkerId);
       localStorage.removeItem("pending_shift_worker_id");
+      toast.dismiss();
+      toast.success("Shift Started Successfully!");
+      navigate("/dashboard");
       setPendingWorkerId("");
       fetchShiftStatus();
     } catch (err) {
@@ -67,11 +74,12 @@ export default function ShiftPage() {
         const message =
           (err.response?.data as { message?: string } | undefined)?.message ||
           "Error starting shift. Ensure yesterday's shift is closed.";
-        alert(message);
+          console.log(message)
+        toast.error(message);
         return;
       }
 
-      alert("Error starting shift. Ensure yesterday's shift is closed.");
+      toast.error("Error starting shift. Ensure yesterday's shift is closed.");
     }
   };
 
@@ -84,7 +92,7 @@ export default function ShiftPage() {
       }));
 
       await closeShiftApi(formattedStocks);
-      alert("Shift Closed Successfully!");
+      toast.success("Shift Closed Successfully!");
       fetchShiftStatus();
       setShowCloseModal(false);
     } catch (err) {
@@ -92,11 +100,11 @@ export default function ShiftPage() {
         const message =
           (err.response?.data as { message?: string } | undefined)?.message ||
           "Error closing shift. Check your numbers.";
-        alert(message);
+        toast.error(message);
         return;
       }
 
-      alert("Error closing shift. Check your numbers.");
+      toast.error("Error closing shift. Check your numbers.");
     }
   };
 
@@ -128,7 +136,7 @@ export default function ShiftPage() {
                 return (
                   <label
                     key={shopUser._id}
-                    className={`flex items-center justify-between gap-3 p-3 rounded-lg border ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'} ${inactive ? 'opacity-60' : ''}`}
+                    className={`flex items-center cursor-pointer justify-between gap-3 p-3 rounded-lg border ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'} ${inactive ? 'opacity-60' : ''}`}
                   >
                     <div className="flex items-center gap-3">
                       <input
@@ -164,7 +172,7 @@ export default function ShiftPage() {
 
         <button 
           onClick={handleStartShift}
-          className="bg-blue-600 text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg"
+          className="bg-blue-600 cursor-pointer text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg"
         >
           🚀 Start Today's Shift
         </button>

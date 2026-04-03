@@ -49,7 +49,7 @@
       localStorage.removeItem("token");
       setUser(null);
       setShop(null);
-      window.location.href = "/auth";
+      window.location.href = "/";
     };
 
     return (

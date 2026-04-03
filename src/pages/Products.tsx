@@ -106,6 +106,7 @@ export default function UnifiedInventoryPage() {
           unit: formData.unit,
           current_buy_price: buyPrice,
           current_sell_price: sellPrice,
+          current_stock: currentStock,
           low_stock_threshold: lowStockThreshold,
         });
 

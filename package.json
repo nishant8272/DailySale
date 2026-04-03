@@ -16,6 +16,7 @@
     "lucide-react": "^1.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.13.2",
     "react-spinners": "^0.17.0",
     "recharts": "^3.8.1",
