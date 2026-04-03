@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { getAllProducts, updateProduct } from "../services/product.service";
+import { addStockToShift, getTodayShift } from "../services/shift.service";
 import type { Product } from "../types/product.types";
 
 
@@ -9,6 +10,9 @@ export default function AddStockPage() {
   const [search, setSearch] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
   const [stockInputs, setStockInputs] = useState<Record<string, number>>({});
+  const [priceInputs, setPriceInputs] = useState<
+    Record<string, { current_buy_price: string; current_sell_price: string }>
+  >({});
   const [successId, setSuccessId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -16,7 +20,19 @@ export default function AddStockPage() {
     const fetchProducts = async () => {
       try {
         const data = await getAllProducts();
-        setProducts((data || []).reverse());
+        const productsData = (data || []).reverse();
+        setProducts(productsData);
+        setPriceInputs(
+          productsData.reduce<
+            Record<string, { current_buy_price: string; current_sell_price: string }>
+          >((acc, product) => {
+            acc[product._id] = {
+              current_buy_price: String(product.current_buy_price),
+              current_sell_price: String(product.current_sell_price),
+            };
+            return acc;
+          }, {})
+        );
       } catch {
         setError("Failed to fetch products");
       } finally {
@@ -33,32 +49,116 @@ export default function AddStockPage() {
   }, [products, search]);
 
   const handleStockUpdate = async (productId: string) => {
-    const addQty = stockInputs[productId];
-    if (!addQty || addQty <= 0) {
-      setError("Please enter a valid quantity.");
+    const product = products.find(p => p._id === productId);
+    if (!product) return;
+
+    const addQty = stockInputs[productId] || 0;
+    const rowPrices = priceInputs[productId] || {
+      current_buy_price: String(product.current_buy_price),
+      current_sell_price: String(product.current_sell_price),
+    };
+
+    const nextBuyPrice = Number(rowPrices.current_buy_price);
+    const nextSellPrice = Number(rowPrices.current_sell_price);
+
+    const hasStockChange = addQty > 0;
+    const hasBuyPriceChange = nextBuyPrice !== product.current_buy_price;
+    const hasSellPriceChange = nextSellPrice !== product.current_sell_price;
+
+    if (!hasStockChange && !hasBuyPriceChange && !hasSellPriceChange) {
+      setError("Please change quantity or prices before updating.");
       return;
     }
 
-    const product = products.find(p => p._id === productId);
-    if (!product) return;
+    if (
+      Number.isNaN(nextBuyPrice) ||
+      Number.isNaN(nextSellPrice) ||
+      nextBuyPrice < 0 ||
+      nextSellPrice < 0
+    ) {
+      setError("Please enter valid buy/sell prices.");
+      return;
+    }
+
+    if (nextBuyPrice >= nextSellPrice) {
+      setError("Buy price must be less than sell price.");
+      return;
+    }
 
     try {
       setUpdating(productId);
       setError("");
-      const newStock = product.current_stock + addQty;
-      await updateProduct(productId, { current_stock: newStock });
+      const newStock = hasStockChange ? product.current_stock + addQty : product.current_stock;
+
+      const todayShiftResponse = await getTodayShift();
+      const todayShift = todayShiftResponse?.data?.data;
+      const isShiftOpen = Boolean(todayShift && !todayShift.is_closed);
+
+      const payload: {
+        current_stock?: number;
+        current_buy_price?: number;
+        current_sell_price?: number;
+      } = {};
+
+      if (hasStockChange) {
+        payload.current_stock = newStock;
+      }
+
+      if (hasBuyPriceChange) {
+        payload.current_buy_price = nextBuyPrice;
+      }
+
+      if (hasSellPriceChange) {
+        payload.current_sell_price = nextSellPrice;
+      }
+
+      let updatedProduct: Product;
+
+      if (isShiftOpen && hasStockChange) {
+        await addStockToShift({
+          product_id: productId,
+          quantity_added: addQty,
+          new_buy_price: nextBuyPrice,
+          ...(hasSellPriceChange ? { new_sell_price: nextSellPrice } : {}),
+        });
+
+        const freshProducts = await getAllProducts();
+        const refreshed = (freshProducts || []).find((p) => p._id === productId);
+
+        if (!refreshed) {
+          throw new Error("Failed to refresh updated product");
+        }
+
+        updatedProduct = refreshed;
+        setProducts((freshProducts || []).reverse());
+      } else {
+        updatedProduct = await updateProduct(productId, payload);
+      }
 
       setProducts(prev =>
         prev.map(p =>
-          p._id === productId ? { ...p, current_stock: newStock } : p
+          p._id === productId ? updatedProduct : p
         )
       );
+
+      setPriceInputs(prev => ({
+        ...prev,
+        [productId]: {
+          current_buy_price: String(updatedProduct.current_buy_price),
+          current_sell_price: String(updatedProduct.current_sell_price),
+        },
+      }));
 
       setSuccessId(productId);
       setTimeout(() => setSuccessId(null), 3000);
       setStockInputs(prev => ({ ...prev, [productId]: 0 }));
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to update stock");
+    } catch (err) {
+      const message =
+        typeof err === "object" && err !== null && "response" in err
+          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ||
+            "Failed to update product")
+          : "Failed to update product";
+      setError(message);
     } finally {
       setUpdating(null);
     }
@@ -108,6 +208,8 @@ export default function AddStockPage() {
                 <th className="px-6 py-4 text-center">Unit</th>
                 <th className="px-6 py-4 text-center">Current Stock</th>
                 <th className="px-6 py-4 text-center">Add Qty</th>
+                <th className="px-6 py-4 text-center">Buy Price</th>
+                <th className="px-6 py-4 text-center">Sell Price</th>
                 <th className="px-6 py-4 text-center">Action</th>
               </tr>
             </thead>
@@ -172,19 +274,59 @@ export default function AddStockPage() {
                     </td>
 
                     <td className="px-6 py-4 text-center">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="w-24 p-2 text-center bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#1D9E75] text-sm font-bold"
+                        value={priceInputs[p._id]?.current_buy_price ?? String(p.current_buy_price)}
+                        onChange={e =>
+                          setPriceInputs(prev => ({
+                            ...prev,
+                            [p._id]: {
+                              current_buy_price: e.target.value,
+                              current_sell_price:
+                                prev[p._id]?.current_sell_price ?? String(p.current_sell_price),
+                            },
+                          }))
+                        }
+                      />
+                    </td>
+
+                    <td className="px-6 py-4 text-center">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="w-24 p-2 text-center bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#1D9E75] text-sm font-bold"
+                        value={priceInputs[p._id]?.current_sell_price ?? String(p.current_sell_price)}
+                        onChange={e =>
+                          setPriceInputs(prev => ({
+                            ...prev,
+                            [p._id]: {
+                              current_buy_price:
+                                prev[p._id]?.current_buy_price ?? String(p.current_buy_price),
+                              current_sell_price: e.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </td>
+
+                    <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => handleStockUpdate(p._id)}
                         disabled={updating === p._id}
                         className="px-4 py-2 bg-[#1D9E75] text-white text-xs font-black rounded-xl hover:bg-[#168a65] transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                       >
-                        {updating === p._id ? "Updating..." : "+ Add Stock"}
+                        {updating === p._id ? "Updating..." : "Update"}
                       </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-20 text-center text-slate-400 font-medium">
+                  <td colSpan={8} className="py-20 text-center text-slate-400 font-medium">
                     No products found.
                   </td>
                 </tr>

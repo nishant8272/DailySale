@@ -8,6 +8,7 @@ import type { AuthUser } from "../types/auth.types";
 import { useAuth } from "../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ShoppingBag, CheckCircle, Loader2, Package, Save, CalendarDays, Users, ArrowRight, X } from "lucide-react";
+import toast from "react-hot-toast";
 
 const getDaysInMonth = (year: number, month: number) => {
   const date = new Date(year, month, 1);
@@ -94,7 +95,7 @@ const DailySales: React.FC = () => {
             active_buy_price: prod.current_buy_price,
             revenue: 0, profit: 0, is_closing_entered: false,
           };
-          return { ...base, is_active: prod.is_active };
+          return { ...base, product_name: prod.name, is_active: prod.is_active };
         });
         // Sort: active first, inactive last
         merged.sort((a, b) => (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1));
@@ -141,18 +142,21 @@ const DailySales: React.FC = () => {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const closingArr = Object.entries(closingStocks).map(([product_id, v]) => ({
-        product_id, closing_stock: v === "" ? 0 : parseInt(v, 10),
-      }));
+      const closingArr = Object.entries(closingStocks)
+        .filter(([, v]) => v !== "")
+        .map(([product_id, v]) => ({
+          product_id,
+          closing_stock: parseInt(v, 10),
+        }));
       await closeShift(closingArr);
       setRefreshFlag((f) => f + 1);
       if (user?.role === "owner") {
         setShowNextShiftPrompt(true);
       } else {
-        alert("Closing stock saved!");
+        toast.success("Closing stock saved!");
       }
-    } catch {
-      alert("Failed to save closing stock");
+    } catch (err){
+      toast.error("Failed to save closing stock");
     }
     setIsLoading(false);
   };

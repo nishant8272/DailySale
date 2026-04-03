@@ -8,7 +8,7 @@ export default function ProtectedRoute() {
   if (loading) return <div>Loading...</div>; // Prevent redirect while checking token
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return (

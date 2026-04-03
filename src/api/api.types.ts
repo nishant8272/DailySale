@@ -45,6 +45,13 @@ export interface DailyProduct {
 export interface DailyEntry {
   _id: string;
   date: string;
+  opened_by?:
+    | string
+    | {
+        _id: string;
+        name: string;
+        role: "owner" | "worker";
+      };
   is_closed: boolean;
   closed_at?: string;
   day_total_revenue: number;

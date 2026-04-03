@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, useNavigate, Outlet } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -13,7 +13,6 @@ interface NavItem {
 
 export function AppLayout() {
     const { user, shop, logout } = useAuth();
-    const navigate = useNavigate();
     const [alertCount, setAlertCount] = useState<number>(0);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -39,7 +38,6 @@ export function AppLayout() {
 
     const handleLogout = () => {
         logout();
-        navigate("/auth");
     };
 
     const navItems: NavItem[] = [
@@ -78,7 +76,7 @@ export function AppLayout() {
     ];
 
     return (
-        <div className="flex flex-col h-screen bg-slate-50 font-sans text-slate-900">
+        <div className="flex flex-col h-screen bg-slate-250 font-sans text-slate-900">
             {/* Top Navbar */}
             <nav className="h-14 w-full bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 z-30">
                 <div className="flex items-center gap-2">

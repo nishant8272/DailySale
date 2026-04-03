@@ -56,6 +56,17 @@ export default function DashboardPage() {
     }).format(amount);
   };
 
+  const getShiftStartedByText = () => {
+    const starter = data.todayShift?.opened_by;
+
+    if (!starter || typeof starter === "string") {
+      return "Shift open";
+    }
+
+    const roleLabel = starter.role === "owner" ? "Owner" : "Worker";
+    return `Shift open · Started by ${roleLabel} (${starter.name})`;
+  };
+
   if (data.loading) {
     return <DashboardSkeleton />;
   }
@@ -83,7 +94,7 @@ export default function DashboardPage() {
           {data.todayShift ? (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-full text-green-700 text-sm font-semibold">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              Shift open
+              {getShiftStartedByText()}
             </div>
           ) : (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-100 rounded-full text-red-600 text-sm font-semibold">
@@ -94,7 +105,7 @@ export default function DashboardPage() {
           
           {!data.todayShift && (
             <button 
-              onClick={() => navigate("/daily")}
+              onClick={() => navigate("/shift")}
               className="px-6 py-2 cursor-pointer bg-[#1D9E75] text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-[#168a65] transition-all active:scale-95"
             >
               Start Today's Shift

@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthPage } from "./pages/AuthPage";
 import Products from "./pages/Products";
 import DailySales from "./pages/DailySales";
 import LandingPage from "./pages/LandingPage";
@@ -21,7 +20,7 @@ function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/auth" element={<Navigate to="/" replace />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
@@ -34,7 +33,6 @@ function AppRoutes() {
           <Route path="/reports" element={<ReportsPage />} />
         </Route>
 
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<div className="p-10 text-center text-red-500">404 - Not Found</div>} />
       </Routes>
     </BrowserRouter>

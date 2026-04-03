@@ -29,7 +29,7 @@ export function useGoogleAuth() {
     setSignedUser(null);
     setUser(null);
     setShop(null);
-    window.location.href = "/auth";
+    window.location.href = "/";
   }, [setShop, setUser]);
 
   const setError = useCallback((message: string) => {
