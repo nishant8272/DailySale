@@ -117,14 +117,14 @@ export default function Navbar() {
 
                     {/* Profile Info */}
                     <div className="px-4 py-3 border-b border-slate-100">
-                      <p className="text-xs font-bold text-slate-900">{user.name}</p>
-                      <p className="text-[10px] text-slate-400 uppercase tracking-widest">{user.role}</p>
+                      <p className="text-xl font-bold text-slate-900">{user.name}</p>
+                      <p className="text-[13px] text-slate-600 uppercase tracking-widest">{user.role}</p>
                     </div>
 
                     {/* Profile Link */}
                     <button
                       onClick={() => { navigate("/profile"); setDropdownOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                      className="w-full cursor-pointer flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
                         <circle cx="12" cy="8" r="4" />
@@ -136,7 +136,7 @@ export default function Navbar() {
                     {/* Logout */}
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                      className="w-full cursor-pointer flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
                         <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" strokeLinecap="round" />

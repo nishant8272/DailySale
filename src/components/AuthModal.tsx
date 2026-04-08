@@ -25,25 +25,26 @@ export function AuthModal({ open, onClose, redirectTo = "/dashboard" }: AuthModa
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-100 flex items-center justify-center px-4 py-6">
+    <div className="fixed inset-0 z-100 flex items-start justify-center overflow-y-auto px-3 py-3 sm:items-center sm:px-4 sm:py-6">
       <div
         className="absolute inset-0 bg-slate-950/55 backdrop-blur-md"
         onClick={onClose}
       />
 
-      <div className="relative z-101 w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-950/20 sm:p-8 animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative z-101 w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl ...">
         <button
           type="button"
           onClick={onClose}
-          className="absolute cursor-pointer right-4 top-4 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 sm:right-4 sm:top-4"
           aria-label="Close auth modal"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 pointer-events-none">
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
-
-        <AuthPage mode="modal" onClose={onClose} redirectTo={redirectTo} />
+        <div className="max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl p-4 sm:max-h-[calc(100dvh-3rem)] sm:p-8">
+          <AuthPage mode="modal" onClose={onClose} redirectTo={redirectTo} />
+        </div>
       </div>
     </div>,
     document.body

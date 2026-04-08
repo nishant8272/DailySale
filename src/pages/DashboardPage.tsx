@@ -25,7 +25,6 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
       try {
         const dashboardData = await fetchDashboardDataApi();
-
         setData({
           todayShift: dashboardData.todayShift,
           alertCount: dashboardData.alertCount,
@@ -78,6 +77,7 @@ export default function DashboardPage() {
     : [];
 
   const totalUnits = data.todayShift?.products.reduce((acc:any, p:any) => acc + p.units_sold, 0) || 0;
+  const isShiftOpen = data.todayShift?.is_closed === false;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -91,7 +91,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {data.todayShift ? (
+          {isShiftOpen ? (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-full text-green-700 text-sm font-semibold">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               {getShiftStartedByText()}
@@ -103,7 +103,7 @@ export default function DashboardPage() {
             </div>
           )}
           
-          {!data.todayShift && (
+          {!isShiftOpen && (
             <button 
               onClick={() => navigate("/shift")}
               className="px-6 py-2 cursor-pointer bg-[#1D9E75] text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-[#168a65] transition-all active:scale-95"
@@ -136,7 +136,7 @@ export default function DashboardPage() {
             <ActionButton label="Daily Sheet" path="/daily" color="bg-purple-50 text-purple-700" icon={<ListIcon />} />
             <ActionButton label="Add Stock" path="/add-stock" color="bg-blue-50 text-blue-700" icon={<PlusIcon />} />
             <ActionButton label="Reports" path="/reports" color="bg-amber-50 text-amber-700" icon={<ChartIcon />} />
-            {data.todayShift && (
+            {isShiftOpen && (
               <ActionButton label="Close Shift" path="/daily-sheet" color="bg-red-50 text-red-700" icon={<CloseIcon />} />
             )}
           </div>
