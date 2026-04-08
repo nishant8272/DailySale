@@ -70,6 +70,7 @@ export default function ShiftPage() {
       setPendingWorkerId("");
       fetchShiftStatus();
     } catch (err) {
+      toast.dismiss();
       if (axios.isAxiosError(err)) {
         const message =
           (err.response?.data as { message?: string } | undefined)?.message ||

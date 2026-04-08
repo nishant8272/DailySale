@@ -23,6 +23,7 @@ export const closeShift = async (closingStocks: { product_id: string; closing_st
     { closing_stocks: closingStocks },
     { headers: { Authorization: `Bearer ${localStorageKey()}` } }
   );
+  console.log(res.data)
   return res.data;
 };
 
@@ -32,6 +33,7 @@ export const startShift = async (workerId?: string) => {
     workerId ? { worker_id: workerId } : {},
     { headers: { Authorization: `Bearer ${localStorageKey()}` } }
   );
+  console.log(res.data)
   return res.data;
 };
 

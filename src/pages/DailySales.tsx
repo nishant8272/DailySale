@@ -214,7 +214,7 @@ const DailySales: React.FC = () => {
                       className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                       aria-label="Close next shift prompt"
                     >
-                      <X className="h-5 w-5" />
+                      <X className="h-5 cursor-pointer w-5" />
                     </button>
                   </div>
 
@@ -224,7 +224,7 @@ const DailySales: React.FC = () => {
                       value={selectedWorkerId}
                       onChange={(e) => setSelectedWorkerId(e.target.value)}
                       disabled={isLoadingWorkers}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white disabled:cursor-not-allowed"
+                      className="w-full rounded-2xl cursor-pointer border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white disabled:cursor-not-allowed"
                     >
                       <option value="">Select person for the next shift</option>
                       {activeShiftUsers.map((shopUser) => (
@@ -241,13 +241,13 @@ const DailySales: React.FC = () => {
                   <div className="mt-6 flex gap-3">
                     <button
                       onClick={() => setShowNextShiftPrompt(false)}
-                      className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      className="flex-1 cursor-pointer rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                     >
                       Later
                     </button>
                     <button
                       onClick={handleContinueNextShift}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={isLoadingWorkers}
                     >
                       Continue
@@ -476,7 +476,7 @@ const DailySales: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={isLoading}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-linear-to-r from-violet-600 to-indigo-600 shadow-md shadow-violet-200 hover:from-violet-700 hover:to-indigo-700 hover:shadow-lg hover:shadow-violet-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-200"
+              className="inline-flex cursor-pointer items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-linear-to-r from-violet-600 to-indigo-600 shadow-md shadow-violet-200 hover:from-violet-700 hover:to-indigo-700 hover:shadow-lg hover:shadow-violet-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-200"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Closing Stock

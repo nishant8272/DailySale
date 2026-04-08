@@ -70,6 +70,7 @@ export default function ReportsPage() {
   }, [report.totalProfit, report.totalRevenue]);
 
   const bestLabel = range === "year" ? "Best Month" : range === "month" ? "Best Day" : range === "week" ? "Best Day" : "Best Product";
+  const chartMinWidth = Math.max(420, report.chartLabels.length * 64);
 
   if (loading) {
     return <ReportsSkeleton />;
@@ -85,13 +86,13 @@ export default function ReportsPage() {
             <p className="mt-1 text-sm text-slate-500">{report.subtitle || "Track revenue, profit, and product performance across time ranges."}</p>
           </div>
 
-          <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
+          <div className="flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
             {RANGE_OPTIONS.map((option) => (
               <button
                 key={option.key}
                 type="button"
                 onClick={() => setRange(option.key)}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition-all ${
+                className={`shrink-0 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
                   range === option.key
                     ? "bg-[#1D9E75] text-white shadow-sm"
                     : "bg-white text-slate-600 hover:text-slate-900"
@@ -148,27 +149,29 @@ export default function ReportsPage() {
           </div>
 
           {report.chartLabels.length > 0 ? (
-            <div className="h-65 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={report.chartLabels.map((label, index) => ({
-                  label,
-                  revenue: report.chartRevenue[index] ?? 0,
-                  profit: report.chartProfit[index] ?? 0,
-                }))}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} stroke="#64748B" />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    fontSize={12}
-                    stroke="#64748B"
-                    tickFormatter={(value) => `₹${formatCompact(value)}`}
-                  />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Bar dataKey="revenue" fill="#1D9E75" radius={[8, 8, 0, 0]} name="Revenue" />
-                  <Bar dataKey="profit" fill="#7F77DD" radius={[8, 8, 0, 0]} name="Profit" />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="h-65 w-full overflow-x-auto">
+              <div style={{ minWidth: chartMinWidth, height: "100%" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={report.chartLabels.map((label, index) => ({
+                    label,
+                    revenue: report.chartRevenue[index] ?? 0,
+                    profit: report.chartProfit[index] ?? 0,
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} stroke="#64748B" />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      fontSize={12}
+                      stroke="#64748B"
+                      tickFormatter={(value) => `₹${formatCompact(value)}`}
+                    />
+                    <Tooltip content={<ChartTooltip />} />
+                    <Bar dataKey="revenue" fill="#1D9E75" radius={[8, 8, 0, 0]} name="Revenue" />
+                    <Bar dataKey="profit" fill="#7F77DD" radius={[8, 8, 0, 0]} name="Profit" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           ) : (
             <EmptyState message="No chart data for this range." />
@@ -240,7 +243,7 @@ export default function ReportsPage() {
 
         {report.tableRows.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm" style={{ minWidth: 680 }}>
               <thead>
                 <tr className="border-b border-slate-200 text-left text-slate-500">
                   <th className="py-3 pr-4 font-semibold">Date</th>

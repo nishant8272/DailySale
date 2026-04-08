@@ -32,19 +32,19 @@ export default function LandingPage(): React.ReactElement {
   }, [authOpen]);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans text-[#0f172a]">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-150 overflow-hidden pointer-events-none -z-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[60%] rounded-full bg-green-100/40 blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[10%] right-[-5%] w-[30%] h-[50%] rounded-full bg-blue-100/30 blur-[100px]"></div>
+    <div className="relative min-h-screen overflow-x-hidden bg-[#f8fafc] font-sans text-[#0f172a]">
+      <div className="pointer-events-none absolute top-0 left-1/2 -z-10 h-112 w-full -translate-x-1/2 overflow-hidden sm:h-136 lg:h-160">
+        <div className="absolute top-[-10%] left-[-10%] h-56 w-56 rounded-full bg-green-100/40 blur-[120px] animate-pulse sm:h-88 sm:w-88 md:h-104 md:w-104"></div>
+        <div className="absolute bottom-[10%] right-[-5%] h-48 w-48 rounded-full bg-blue-100/30 blur-[100px] sm:h-72 sm:w-72 md:h-88 md:w-88"></div>
       </div>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none -z-5">
-        <div className="absolute top-[20%] left-[10%] animate-bounce duration-3000 opacity-20">
+      <div className="pointer-events-none absolute inset-0 -z-5 overflow-hidden">
+        <div className="absolute top-[20%] left-[10%] animate-bounce opacity-20 [animation-duration:3s]">
           <span className="text-4xl text-yellow-500">💰</span>
         </div>
         <div className="absolute top-[60%] left-[5%] animate-pulse opacity-10 rotate-12">
           <span className="text-5xl">🧮</span>
         </div>
-        <div className="absolute top-[30%] right-[10%] animate-bounce duration-4000 opacity-20 -rotate-12">
+        <div className="absolute top-[30%] right-[10%] animate-bounce opacity-20 -rotate-12 [animation-duration:4s]">
           <span className="text-4xl">🛍️</span>
         </div>
         <div className="absolute top-[70%] right-[15%] animate-pulse opacity-10">
@@ -70,7 +70,7 @@ export default function LandingPage(): React.ReactElement {
 
       {/* Navbar */}
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-20 h-16 transition-all ${scrolled ? "bg-white/80 backdrop-blur-md border-b border-slate-200" : "bg-transparent"
+        className={`fixed top-0 left-0 right-0 z-50 flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 md:px-20 md:py-0 md:h-16 transition-all ${scrolled ? "bg-white/80 backdrop-blur-md border-b border-slate-200" : "bg-transparent"
           }`}
       >
         <div className="flex items-center gap-2">
@@ -104,15 +104,25 @@ export default function LandingPage(): React.ReactElement {
             Sign In
           </button>
         </div>
+
+        <button
+          onClick={() => {
+            setAuthRedirect("/dashboard");
+            setAuthOpen(true);
+          }}
+          className="ml-auto rounded-full bg-[#1D9E75] px-4 py-2 text-sm font-bold text-white transition-all hover:bg-[#168a65] md:hidden"
+        >
+          Sign In
+        </button>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+      <section className="relative overflow-hidden px-4 pt-28 pb-16 sm:px-6 sm:pt-32 sm:pb-20">
         {/* Hero Background Decor */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-150 h-100 bg-green-200/20 blur-[120px] rounded-full"></div>
+          <div className="absolute top-[10%] left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-green-200/20 blur-[120px] sm:h-80 sm:w-80 md:h-96 md:w-lg"></div>
           <div
-            className="absolute inset-0"
+            className="absolute inset-0 opacity-100"
             style={{
               backgroundImage: "radial-gradient(#1D9E75 0.5px, transparent 0.5px)",
               backgroundSize: "30px 30px",
@@ -155,36 +165,36 @@ export default function LandingPage(): React.ReactElement {
             MADE FOR BHARAT
           </div>
 
-          <h1 className="animate-reveal text-4xl md:text-6xl font-extrabold tracking-tight text-[#0f172a] mb-6 leading-[1.1]">
+          <h1 className="animate-reveal mb-5 text-3xl font-extrabold leading-[1.15] tracking-tight text-[#0f172a] sm:text-4xl md:mb-6 md:text-6xl">
             Apni dukaan ka hisaab, <br />
             <span className="text-[#1D9E75]">ek jagah pe.</span>
           </h1>
 
-          <p className="animate-reveal delay-1 text-lg text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="animate-reveal delay-1 mx-auto mb-8 max-w-2xl text-base leading-relaxed text-slate-500 sm:mb-10 sm:text-lg">
             Track daily sales, stock arrivals, and closing balances.
             Know your exact profit shift-by-shift with zero guesswork.
           </p>
 
-          <div className="animate-reveal delay-2 flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+          <div className="animate-reveal delay-2 mb-12 flex flex-col items-stretch justify-center gap-4 sm:flex-row sm:items-center md:mb-16">
             <button
               onClick={() => {
                 setAuthRedirect("/dashboard");
                 setAuthOpen(true);
               }}
-              className="w-full sm:w-auto px-8 py-4 cursor-pointer bg-[#1D9E75] text-white rounded-2xl font-bold text-lg shadow-xl shadow-green-200/50 hover:bg-[#168a65] hover:-translate-y-1 transition-all"
+              className="w-full cursor-pointer rounded-2xl bg-[#1D9E75] px-8 py-4 text-lg font-bold text-white shadow-xl shadow-green-200/50 transition-all hover:bg-[#168a65] hover:-translate-y-1 sm:w-auto"
             >
               Start Today's Shift
             </button>
           </div>
 
           {/* Mini Dashboard Preview */}
-          <div className="relative mx-auto max-w-5xl px-4 group">
+          <div className="group relative mx-auto max-w-5xl px-0 sm:px-4">
             {/* Decorative Glow Background */}
-            <div className="absolute -inset-10 bg-linear-to-r from-green-300/30 via-blue-200/20 to-purple-300/30 rounded-[3rem] blur-3xl opacity-50"></div>
+            <div className="absolute -inset-4 rounded-4xl bg-linear-to-r from-green-300/30 via-blue-200/20 to-purple-300/30 opacity-50 blur-3xl sm:-inset-10 sm:rounded-[3rem]"></div>
 
             <div className="relative rounded-3xl border border-white/40 bg-white/80 backdrop-blur-xl p-2 shadow-2xl transition-transform duration-500 hover:scale-[1.02] hover:-rotate-1">
-              <div className="rounded-2xl border border-slate-100 overflow-hidden bg-slate-50/50 p-4 md:p-8">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/50 p-3 sm:p-4 md:p-8">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-4">
                   {[
                     { label: "Today's Revenue", val: "₹18,400", c: "text-[#1D9E75]", icon: "📈" },
                     { label: "Today's Profit", val: "₹4,200", c: "text-blue-600", icon: "💰" },
@@ -193,12 +203,12 @@ export default function LandingPage(): React.ReactElement {
                   ].map((s, i) => (
                     <div
                       key={s.label}
-                      className="bg-white p-5 rounded-2xl border border-slate-100 text-left shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
+                      className="transform rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md sm:p-5"
                       style={{ transitionDelay: `${i * 100}ms` }}
                     >
                       <div className="text-xl mb-2">{s.icon}</div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{s.label}</p>
-                      <p className={`text-2xl font-black ${s.c}`}>{s.val}</p>
+                      <p className={`text-xl font-black sm:text-2xl ${s.c}`}>{s.val}</p>
                     </div>
                   ))}
                 </div>
@@ -206,20 +216,20 @@ export default function LandingPage(): React.ReactElement {
             </div>
           </div>
 
-          <div className="animate-reveal delay-2 mt-20 flex flex-wrap justify-center items-center gap-8 opacity-40 grayscale contrast-125">
+          <div className="animate-reveal delay-2 mt-16 flex flex-wrap items-center justify-center gap-3 opacity-40 grayscale contrast-125 sm:mt-20 sm:gap-4 md:gap-8">
             <p className="text-sm font-bold text-slate-400 w-full text-center mb-2 uppercase tracking-widest">Perfect for</p>
-            <span className="text-lg font-bold rounded-full bg-slate-200 text-slate-700 px-4 py-2">Kirana Stores</span>
-            <span className="text-lg font-bold rounded-full bg-slate-200 text-slate-700 px-4 py-2">Medical Shops</span>
-            <span className="text-lg font-bold rounded-full bg-slate-200 text-slate-700 px-4 py-2">Bakeries</span>
-            <span className="text-lg font-bold rounded-full bg-slate-200 text-slate-700 px-4 py-2">Electronic Stores</span>
+            <span className="rounded-full bg-slate-200 px-4 py-2 text-sm font-bold text-slate-700 sm:text-lg">Kirana Stores</span>
+            <span className="rounded-full bg-slate-200 px-4 py-2 text-sm font-bold text-slate-700 sm:text-lg">Medical Shops</span>
+            <span className="rounded-full bg-slate-200 px-4 py-2 text-sm font-bold text-slate-700 sm:text-lg">Bakeries</span>
+            <span className="rounded-full bg-slate-200 px-4 py-2 text-sm font-bold text-slate-700 sm:text-lg">Electronic Stores</span>
           </div>
         </div>
       </section>
 
       {/* Features Simple */}
-      <section id="features" className="py-20 bg-white border-t border-slate-200">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-12">
+      <section id="features" className="border-t border-slate-200 bg-white py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="grid gap-10 md:grid-cols-3 md:gap-12">
             <div>
               <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center mb-6">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2" className="w-6 h-6">
@@ -258,8 +268,8 @@ export default function LandingPage(): React.ReactElement {
       </section>
 
       {/* Simple Footer */}
-      <footer className="py-12 border-t border-slate-200 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+      <footer className="border-t border-slate-200 px-4 py-10 sm:px-6 sm:py-12">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 text-center md:flex-row md:text-left">
           <div className="flex items-center gap-2 grayscale opacity-70">
             <div className="w-6 h-6 bg-slate-800 rounded flex items-center justify-center">
               <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="w-3 h-3">
@@ -268,7 +278,7 @@ export default function LandingPage(): React.ReactElement {
             </div>
             <span className="font-bold text-slate-800">DailySales</span>
           </div>
-          <p className="text-xs text-slate-400 font-medium tracking-widest uppercase">
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400">
             Secure • Private • Made for Bharat
           </p>
           <div className="flex gap-6">

@@ -53,6 +53,25 @@ export function GoogleSigninButton({
       return;
     }
 
+    const renderButton = () => {
+      if (!window.google || !googleButtonRef.current) {
+        return;
+      }
+
+      const availableWidth = Math.floor(googleButtonRef.current.getBoundingClientRect().width);
+      const buttonWidth = String(Math.max(240, Math.min(320, availableWidth || 320)));
+
+      googleButtonRef.current.innerHTML = "";
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        type: "standard",
+        theme: "outline",
+        text: "continue_with",
+        shape: "rectangular",
+        size: "large",
+        width: buttonWidth,
+      });
+    };
+
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
@@ -76,15 +95,7 @@ export function GoogleSigninButton({
         },
       });
 
-      googleButtonRef.current.innerHTML = "";
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        type: "standard",
-        theme: "outline",
-        text: "continue_with",
-        shape: "rectangular", 
-        size: "large",
-        width: "320",
-      });
+      renderButton();
     };
 
     script.onerror = () => {
@@ -93,10 +104,13 @@ export function GoogleSigninButton({
 
     document.body.appendChild(script);
 
+    window.addEventListener("resize", renderButton);
+
     return () => {
+      window.removeEventListener("resize", renderButton);
       script.remove();
     };
   }, [clientId, onCredential, onError]);
 
-  return <div ref={googleButtonRef} className="inline-block" />;
+  return <div ref={googleButtonRef} className="block w-full max-w-full" />;
 }
