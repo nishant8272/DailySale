@@ -15,7 +15,7 @@ const NAV_LINKS: NavLink[] = [
 export default function LandingPage(): React.ReactElement {
   const [scrolled, setScrolled] = useState<boolean>(false);
   const [authOpen, setAuthOpen] = useState<boolean>(false);
-  const [authRedirect, setAuthRedirect] = useState<"/dashboard" | "/shift">("/dashboard");
+  const [authRedirect, setAuthRedirect] = useState<"/dashboard">("/dashboard");
 
   useEffect(() => {
     const onScroll = (): void => setScrolled(window.scrollY > 20);
@@ -183,7 +183,7 @@ export default function LandingPage(): React.ReactElement {
               }}
               className="w-full cursor-pointer rounded-2xl bg-[#1D9E75] px-8 py-4 text-lg font-bold text-white shadow-xl shadow-green-200/50 transition-all hover:bg-[#168a65] hover:-translate-y-1 sm:w-auto"
             >
-              Start Today's Shift
+              Start Shift
             </button>
           </div>
 

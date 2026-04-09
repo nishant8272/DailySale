@@ -20,6 +20,7 @@ export default function ShiftPage() {
   const [pendingWorkerId, setPendingWorkerId] = useState<string>(localStorage.getItem("pending_shift_worker_id") || "");
   const [shopUsers, setShopUsers] = useState<AuthUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [shopUsersError, setShopUsersError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const fetchShiftStatus = async () => {
@@ -35,6 +36,7 @@ export default function ShiftPage() {
 
   const fetchShopUsers = async () => {
     setLoadingUsers(true);
+    setShopUsersError(null);
     try {
       const users = await fetchShopUsersApi();
       setShopUsers(users);
@@ -48,6 +50,7 @@ export default function ShiftPage() {
       }
     } catch {
       setShopUsers([]);
+      setShopUsersError("Could not load shop users.");
     } finally {
       setLoadingUsers(false);
     }
@@ -122,10 +125,22 @@ export default function ShiftPage() {
           Starting the shift will pull yesterday's closing stock as today's opening stock.
         </p>
 
-        <div className="w-full max-w-xl mb-6 text-left">
+        <div className="w-full max-w-xl mb-2 text-left">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">Users in this shop</h2>
+
           {loadingUsers ? (
             <p className="text-sm text-gray-500">Loading users...</p>
+          ) : shopUsersError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-3">
+              <p className="text-sm text-red-700">{shopUsersError}</p>
+              <button
+                type="button"
+                onClick={fetchShopUsers}
+                className="mt-3 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+              >
+                Retry
+              </button>
+            </div>
           ) : shopUsers.length === 0 ? (
             <p className="text-sm text-gray-500">No users found for this shop.</p>
           ) : (
@@ -139,7 +154,7 @@ export default function ShiftPage() {
                     key={shopUser._id}
                     className={`flex items-center cursor-pointer justify-between gap-3 p-3 rounded-lg border ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'} ${inactive ? 'opacity-60' : ''}`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       <input
                         type="radio"
                         name="shift_user"
@@ -150,9 +165,9 @@ export default function ShiftPage() {
                           localStorage.setItem('pending_shift_worker_id', shopUser._id);
                         }}
                       />
-                      <div>
-                        <p className="font-medium text-gray-800">{shopUser.name}</p>
-                        <p className="text-xs text-gray-500">{shopUser.phone}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-800 truncate">{shopUser.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{shopUser.phone}</p>
                       </div>
                     </div>
                     <div className="text-xs flex items-center gap-2">
@@ -166,17 +181,20 @@ export default function ShiftPage() {
               })}
             </div>
           )}
+
           {user?.role !== 'owner' && (
             <p className="text-xs text-gray-500 mt-2">Only owner can select who will attend the shift.</p>
           )}
-        </div>
 
-        <button 
-          onClick={handleStartShift}
-          className="bg-blue-600 cursor-pointer text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg"
-        >
-          🚀 Start Today's Shift
-        </button>
+          <button
+            type="button"
+            onClick={handleStartShift}
+            disabled={user?.role === 'owner' && !pendingWorkerId}
+            className="mt-6 w-full bg-blue-600 cursor-pointer text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            🚀 Start Shift
+          </button>
+        </div>
       </div>
     );
   }

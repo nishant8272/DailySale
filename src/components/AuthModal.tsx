@@ -5,7 +5,7 @@ import { AuthPage } from "../pages/AuthPage";
 type AuthModalProps = {
   open: boolean;
   onClose: () => void;
-  redirectTo?: "/dashboard" | "/shift";
+  redirectTo?: "/dashboard";
 };
 
 export function AuthModal({ open, onClose, redirectTo = "/dashboard" }: AuthModalProps) {
