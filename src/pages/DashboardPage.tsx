@@ -1,8 +1,15 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
+import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import type { DailyEntry, WeeklyReport } from "../api/api.types";
-import { fetchDashboardDataApi } from "../services/dashboard.service";
+import type { Alert, DailyEntry, WeeklyReport } from "../api/api.types";
+import type { AuthUser } from "../types/auth.types";
+import { fetchDashboardDataApi, fetchLowStockAlertsApi } from "../services/dashboard.service";
+import { fetchShopUsersApi } from "../services/user.service";
+import { startShift as startShiftApi } from "../services/shift.service";
+import LowStockAlertsModal from "../components/LowStockAlertsModal";
+import StartShiftModal from "../components/StartShiftModal";
 
 interface DashboardData {
   todayShift: DailyEntry | null;
@@ -12,31 +19,77 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const navigate = useNavigate();
   const { user, shop } = useAuth();
+  const pendingShiftStorageKey = "pending_shift_worker_id";
   const [data, setData] = useState<DashboardData>({
     todayShift: null,
     alertCount: 0,
     weeklyReport: null,
     loading: true,
   });
+  const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
+  const [lowStockAlerts, setLowStockAlerts] = useState<Alert[]>([]);
+  const [lowStockLoading, setLowStockLoading] = useState(false);
+  const [lowStockError, setLowStockError] = useState<string | null>(null);
+  const [isStartShiftModalOpen, setIsStartShiftModalOpen] = useState(false);
+  const [pendingWorkerId, setPendingWorkerId] = useState<string>(
+    localStorage.getItem(pendingShiftStorageKey) || ""
+  );
+  const [shopUsers, setShopUsers] = useState<AuthUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [shopUsersError, setShopUsersError] = useState<string | null>(null);
+  const [startingShift, setStartingShift] = useState(false);
+
+  const fetchDashboardData = async () => {
+    try {
+      const dashboardData = await fetchDashboardDataApi();
+      setData({
+        todayShift: dashboardData.todayShift,
+        alertCount: dashboardData.alertCount,
+        weeklyReport: dashboardData.weeklyReport,
+        loading: false,
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard data", error);
+      setData((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const fetchShopUsers = async () => {
+    if (user?.role !== "owner") {
+      return;
+    }
+
+    setLoadingUsers(true);
+    setShopUsersError(null);
+    try {
+      const users = await fetchShopUsersApi();
+      setShopUsers(users);
+
+      const selectedUserStillValid =
+        pendingWorkerId && users.some((u) => u._id === pendingWorkerId && u.is_active !== false);
+
+      if (!selectedUserStillValid) {
+        const firstActiveUser = users.find((u) => u.is_active !== false);
+        const nextWorkerId = firstActiveUser?._id || "";
+        setPendingWorkerId(nextWorkerId);
+
+        if (nextWorkerId) {
+          localStorage.setItem(pendingShiftStorageKey, nextWorkerId);
+        } else {
+          localStorage.removeItem(pendingShiftStorageKey);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching shop users", error);
+      setShopUsers([]);
+      setShopUsersError("Could not load shop users.");
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const dashboardData = await fetchDashboardDataApi();
-        setData({
-          todayShift: dashboardData.todayShift,
-          alertCount: dashboardData.alertCount,
-          weeklyReport: dashboardData.weeklyReport,
-          loading: false,
-        });
-      } catch (error) {
-        console.error("Error fetching dashboard data", error);
-        setData((prev) => ({ ...prev, loading: false }));
-      }
-    };
-
     fetchDashboardData();
   }, []);
 
@@ -66,6 +119,72 @@ export default function DashboardPage() {
     return `Shift open · Started by ${roleLabel} (${starter.name})`;
   };
 
+  const openLowStockModal = async () => {
+    setIsLowStockModalOpen(true);
+
+    if (lowStockAlerts.length > 0 || lowStockLoading) {
+      return;
+    }
+
+    setLowStockLoading(true);
+    setLowStockError(null);
+
+    try {
+      const alerts = await fetchLowStockAlertsApi();
+      setLowStockAlerts(alerts);
+    } catch (error) {
+      console.error("Error fetching low stock alerts", error);
+      setLowStockError("We couldn't load the item list right now.");
+    } finally {
+      setLowStockLoading(false);
+    }
+  };
+
+  const closeLowStockModal = () => {
+    setIsLowStockModalOpen(false);
+  };
+
+  const openStartShiftModal = async () => {
+    setIsStartShiftModalOpen(true);
+    await fetchShopUsers();
+  };
+
+  const closeStartShiftModal = () => {
+    setIsStartShiftModalOpen(false);
+  };
+
+  const handleStartShift = async () => {
+    try {
+      setStartingShift(true);
+      toast.loading("Starting shift...");
+
+      const selectedWorkerId =
+        user?.role === "owner" && pendingWorkerId ? pendingWorkerId : undefined;
+
+      await startShiftApi(selectedWorkerId);
+
+      localStorage.removeItem(pendingShiftStorageKey);
+      setPendingWorkerId("");
+      setIsStartShiftModalOpen(false);
+      toast.dismiss();
+      toast.success("Shift started successfully!");
+      await fetchDashboardData();
+    } catch (error) {
+      toast.dismiss();
+      if (axios.isAxiosError(error)) {
+        const message =
+          (error.response?.data as { message?: string } | undefined)?.message ||
+          "Error starting shift. Ensure yesterday's shift is closed.";
+        toast.error(message);
+        return;
+      }
+
+      toast.error("Error starting shift. Ensure yesterday's shift is closed.");
+    } finally {
+      setStartingShift(false);
+    }
+  };
+
   if (data.loading) {
     return <DashboardSkeleton />;
   }
@@ -77,7 +196,13 @@ export default function DashboardPage() {
     : [];
 
   const totalUnits = data.todayShift?.products.reduce((acc:any, p:any) => acc + p.units_sold, 0) || 0;
+  const hasShiftToday = Boolean(data.todayShift);
   const isShiftOpen = data.todayShift?.is_closed === false;
+  const shiftStatusText = isShiftOpen
+    ? getShiftStartedByText()
+    : hasShiftToday
+      ? "Shift closed today"
+      : "No shift started";
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -91,10 +216,18 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {isShiftOpen ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-full text-green-700 text-sm font-semibold">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              {getShiftStartedByText()}
+          {hasShiftToday ? (
+            <div
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${
+                isShiftOpen
+                  ? "border-green-100 bg-green-50 text-green-700"
+                  : "border-slate-200 bg-slate-50 text-slate-600"
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${isShiftOpen ? "bg-green-500 animate-pulse" : "bg-slate-400"}`}
+              />
+              {shiftStatusText}
             </div>
           ) : (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-100 rounded-full text-red-600 text-sm font-semibold">
@@ -102,13 +235,13 @@ export default function DashboardPage() {
               No shift started
             </div>
           )}
-          
-          {!isShiftOpen && (
+
+          {!hasShiftToday && (
             <button 
-              onClick={() => navigate("/shift")}
+              onClick={openStartShiftModal}
               className="px-6 py-2 cursor-pointer bg-[#1D9E75] text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-[#168a65] transition-all active:scale-95"
             >
-              Start Today's Shift
+              Start Shift
             </button>
           )}
         </div>
@@ -122,7 +255,9 @@ export default function DashboardPage() {
         <StatCard 
           title="Low Stock Alerts" 
           value={data.alertCount.toString()} 
-          color={data.alertCount > 0 ? "text-red-600 font-bold" : "text-slate-400"} 
+          color={data.alertCount > 0 ? "text-red-600 font-bold" : "text-slate-400"}
+          description={data.alertCount > 0 ? "Tap to view items" : "No low stock items"}
+          onClick={data.alertCount > 0 ? openLowStockModal : undefined}
         />
       </div>
 
@@ -136,7 +271,7 @@ export default function DashboardPage() {
             <ActionButton label="Daily Sheet" path="/daily" color="bg-purple-50 text-purple-700" icon={<ListIcon />} />
             <ActionButton label="Add Stock" path="/add-stock" color="bg-blue-50 text-blue-700" icon={<PlusIcon />} />
             <ActionButton label="Reports" path="/reports" color="bg-amber-50 text-amber-700" icon={<ChartIcon />} />
-            {isShiftOpen && (
+            {hasShiftToday && isShiftOpen && (
               <ActionButton label="Close Shift" path="/daily-sheet" color="bg-red-50 text-red-700" icon={<CloseIcon />} />
             )}
           </div>
@@ -170,18 +305,68 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      <LowStockAlertsModal
+        open={isLowStockModalOpen}
+        onClose={closeLowStockModal}
+        alerts={lowStockAlerts}
+        loading={lowStockLoading}
+        error={lowStockError}
+        onRetry={openLowStockModal}
+      />
+
+      <StartShiftModal
+        open={isStartShiftModalOpen}
+        onClose={closeStartShiftModal}
+        currentUserRole={user?.role}
+        users={shopUsers}
+        loadingUsers={loadingUsers}
+        usersError={shopUsersError}
+        pendingWorkerId={pendingWorkerId}
+        onSelectWorker={(workerId) => {
+          setPendingWorkerId(workerId);
+          localStorage.setItem(pendingShiftStorageKey, workerId);
+        }}
+        onRetryUsers={fetchShopUsers}
+        onStartShift={handleStartShift}
+        startingShift={startingShift}
+      />
     </div>
   );
 }
 
 /* HELPER COMPONENTS */
 
-function StatCard({ title, value, color }: { title: string; value: string; color: string }) {
+function StatCard({
+  title,
+  value,
+  color,
+  description,
+  onClick,
+}: {
+  title: string;
+  value: string;
+  color: string;
+  description?: string;
+  onClick?: () => void;
+}) {
+  const isClickable = Boolean(onClick);
+
   return (
-    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-transform hover:scale-[1.02]">
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!isClickable}
+      className={`w-full bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left transition-all ${
+        isClickable
+          ? "cursor-pointer hover:scale-[1.02] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30"
+          : "cursor-default"
+      }`}
+    >
       <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{title}</p>
       <p className={`text-xl sm:text-2xl font-black ${color}`}>{value}</p>
-    </div>
+      {description ? <p className="mt-1 text-xs font-medium text-slate-500">{description}</p> : null}
+    </button>
   );
 }
 
@@ -220,6 +405,7 @@ function DashboardSkeleton() {
     </div>
   );
 }
+
 
 /* INLINE ICONS */
 const BoxIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M21 8l-9-4-9 4 9 4 9-4zM3 12l9 4 9-4M3 16l9 4 9-4" /></svg>;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bar,
@@ -42,6 +42,8 @@ export default function ReportsPage() {
   const [report, setReport] = useState<NormalizedReport>(EMPTY_REPORT);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadReport = async () => {
@@ -61,6 +63,18 @@ export default function ReportsPage() {
     void loadReport();
   }, [range, reloadToken]);
 
+  useEffect(() => {
+    const onWindowClick = (event: MouseEvent) => {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("mousedown", onWindowClick);
+    return () => window.removeEventListener("mousedown", onWindowClick);
+  }, []);
+
   const marginPercent = useMemo(() => {
     if (report.totalRevenue <= 0) {
       return 0;
@@ -79,28 +93,59 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Reports</p>
             <h1 className="mt-1 text-2xl font-black text-slate-900">Sales Overview</h1>
             <p className="mt-1 text-sm text-slate-500">{report.subtitle || "Track revenue, profit, and product performance across time ranges."}</p>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
-            {RANGE_OPTIONS.map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setRange(option.key)}
-                className={`shrink-0 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
-                  range === option.key
-                    ? "bg-[#1D9E75] text-white shadow-sm"
-                    : "bg-white text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div ref={menuRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen((open) => !open)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-300 bg-white text-slate-700 transition hover:bg-[#1D9E75]/10 hover:border-[#1D9E75] hover:text-[#1D9E75]"
+              aria-label="Open report actions"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-6 w-6">
+                <path d="M12 5h.01M12 12h.01M12 19h.01" strokeLinecap="round" />
+              </svg>
+            </button>
+
+            {isMenuOpen && (
+              <div className="absolute right-0 top-12 z-20 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate("/dashboard");
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full cursor-pointer rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Home
+                </button>
+
+                <div className="my-2 h-px bg-slate-100" />
+
+                {RANGE_OPTIONS.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => {
+                      setRange(option.key);
+                      setIsMenuOpen(false);
+                    }}
+                    className={`w-full rounded-lg px-3 cursor-pointer py-2 text-left text-sm font-semibold transition ${
+                      range === option.key
+                        ? "bg-[#1D9E75]/10 text-[#1D9E75]"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

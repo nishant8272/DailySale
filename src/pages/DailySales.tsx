@@ -39,6 +39,10 @@ const DailySales: React.FC = () => {
   const [refreshFlag, setRefreshFlag]     = useState(0);
   const scrollRef  = useRef<HTMLDivElement>(null);
   const todayThRef = useRef<HTMLTableCellElement>(null);
+  const [isMobile, setIsMobile]           = useState<boolean>(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
+  const [mobileViewMode, setMobileViewMode] = useState<"sheet" | "cards">("sheet");
 
   const activeShiftUsers = workers.filter((shopUser) => shopUser.is_active !== false);
 
@@ -68,6 +72,12 @@ const DailySales: React.FC = () => {
       container.scrollLeft = Math.max(0, todayTh.offsetLeft - PRODUCT_COL_W - DAY_COL_W);
     });
   }, [today, days]);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     if (!today) return;
@@ -176,6 +186,7 @@ const DailySales: React.FC = () => {
   const todayLabel        = todayDateObj.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const currentMonthLabel = todayDateObj.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
   const totalClosing      = Object.values(closingStocks).reduce((s, v) => s + (parseInt(v) || 0), 0);
+  const pendingClosingCount = products.filter((p) => p.is_active && !p.is_closing_entered).length;
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-indigo-50/40 to-slate-50 pb-20"
@@ -279,15 +290,130 @@ const DailySales: React.FC = () => {
               <h2 className="text-lg font-bold text-slate-900 tracking-tight">Monthly Stock Overview</h2>
               <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{products.length} products</span>
             </div>
-            <p className="text-xs text-slate-400">← Scroll to view past days · Today is highlighted</p>
+            <div className="flex items-center gap-2">
+              {isMobile && (
+                <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setMobileViewMode("sheet")}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                      mobileViewMode === "sheet"
+                        ? "bg-violet-100 text-violet-700"
+                        : "text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    Sheet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMobileViewMode("cards")}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                      mobileViewMode === "cards"
+                        ? "bg-violet-100 text-violet-700"
+                        : "text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    Cards
+                  </button>
+                </div>
+              )}
+              <p className="text-xs text-slate-400">← Scroll to view past days · Today is highlighted</p>
+            </div>
           </div>
 
-          {/* Table wrapper */}
-          <div
-            ref={scrollRef}
-            className="w-full overflow-x-auto overflow-y-auto rounded-2xl border border-slate-200 shadow-md bg-white scroll-thin"
-            style={{ maxHeight: "calc(100vh - 220px)" }}
-          >
+          {isMobile && mobileViewMode === "cards" ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Products</p>
+                  <p className="mt-1 text-lg font-black text-slate-800">{products.length}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending</p>
+                  <p className="mt-1 text-lg font-black text-amber-600">{pendingClosingCount}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</p>
+                  <p className="mt-1 text-lg font-black text-violet-700">{totalClosing}</p>
+                </div>
+              </div>
+
+              {isLoading ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-violet-600" />
+                  <p className="mt-3 text-sm font-medium text-slate-600">Loading sales data…</p>
+                </div>
+              ) : products.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+                  <Package className="mx-auto h-10 w-10 text-slate-300" />
+                  <p className="mt-3 text-sm font-medium text-slate-500">No products found.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {products.map((row) => {
+                    const inputValue = closingStocks[row.product_id] ?? "";
+
+                    return (
+                      <div
+                        key={row.product_id}
+                        className={`rounded-2xl border p-4 shadow-sm ${row.is_active ? "border-slate-200 bg-white" : "border-slate-200 bg-slate-50 opacity-70"}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold text-slate-800">{row.product_name}</p>
+                            {!row.is_active && (
+                              <p className="mt-0.5 text-[11px] font-semibold text-red-500">Inactive product</p>
+                            )}
+                          </div>
+                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                            {row.is_closing_entered ? "Saved" : "Today"}
+                          </span>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                          <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                            <p className="text-slate-400">Opening</p>
+                            <p className="font-semibold text-slate-700">{row.opening_stock}</p>
+                          </div>
+                          <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                            <p className="text-slate-400">Added</p>
+                            <p className="font-semibold text-slate-700">{row.total_added}</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3">
+                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                            Closing stock
+                          </p>
+
+                          {!row.is_active ? (
+                            <p className="text-xs text-slate-400">Unavailable for inactive product</p>
+                          ) : row.is_closing_entered ? (
+                            <div className="inline-flex rounded-lg bg-violet-50 px-3 py-1.5 text-sm font-bold text-violet-700">
+                              {row.closing_stock}
+                            </div>
+                          ) : (
+                            <input
+                              type="number"
+                              className="w-full rounded-xl border border-violet-300 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-800 outline-none transition-all focus:border-violet-600 focus:ring-2 focus:ring-violet-200"
+                              value={inputValue}
+                              placeholder="Enter qty"
+                              onChange={(e) => handleClosingStockChange(row.product_id, e.target.value)}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              ref={scrollRef}
+              className="w-full overflow-x-auto overflow-y-auto rounded-2xl border border-slate-200 shadow-md bg-white scroll-thin"
+              style={{ maxHeight: "calc(100vh - 220px)" }}
+            >
             {isLoading && (
               <div className="sticky top-0 left-0 w-full pointer-events-none z-200" style={{ height: 0 }}>
                 <div className="absolute left-0 w-full flex items-center justify-center" style={{ height: 400, top: 0 }}>
@@ -469,10 +595,11 @@ const DailySales: React.FC = () => {
                 )}
               </table>
             </div>
-          </div>
+            </div>
+          )}
 
           {/* Save */}
-          <div className="flex justify-end pt-1">
+          <div className="hidden md:flex justify-end pt-1">
             <button
               onClick={handleSave}
               disabled={isLoading}
@@ -482,6 +609,19 @@ const DailySales: React.FC = () => {
               Save Closing Stock
             </button>
           </div>
+
+          {isMobile && (
+            <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 p-3 backdrop-blur sm:hidden">
+              <button
+                onClick={handleSave}
+                disabled={isLoading}
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-linear-to-r from-violet-600 to-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-violet-200 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save Closing Stock
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
