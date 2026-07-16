@@ -7,6 +7,9 @@ import ShiftPage from "./pages/ShiftPage";
 import AddStock from "./pages/AddStock";
 import ProfilePage from "./pages/ProfilePage";
 import ReportsPage from "./pages/ReportsPage";
+import { AuthCallbackPage } from "./pages/AuthCallbackPage";
+import UdharbookPage from "./pages/UdharbookPage";
+
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Loader from "./components/loader";
@@ -21,6 +24,8 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<Navigate to="/" replace />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
@@ -31,6 +36,7 @@ function AppRoutes() {
           <Route path="/add-stock" element={<AddStock />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/udharbook" element={<UdharbookPage />} />
         </Route>
 
         <Route path="*" element={<div className="p-10 text-center text-red-500">404 - Not Found</div>} />

@@ -2,12 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { getAllProducts } from "../services/product.service";
 import { getDailyReport, closeShift } from "../services/shift.service";
 import { fetchShopUsersApi } from "../services/user.service";
+import axios from "axios";
+import { localStorageKey } from "../lib/utils";
 import type { DailyReportProduct, DailyReport } from "../types/dailyreport.types";
 import type { Product } from "../types/product.types";
 import type { AuthUser } from "../types/auth.types";
 import { useAuth } from "../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ShoppingBag, CheckCircle, Loader2, Package, Save, CalendarDays, Users, ArrowRight, X } from "lucide-react";
+import { ShoppingBag, CheckCircle, Loader2, Package, Save, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
 
 const getDaysInMonth = (year: number, month: number) => {
@@ -43,8 +45,13 @@ const DailySales: React.FC = () => {
     typeof window !== "undefined" ? window.innerWidth < 768 : false
   );
   const [mobileViewMode, setMobileViewMode] = useState<"sheet" | "cards">("sheet");
-
-  const activeShiftUsers = workers.filter((shopUser) => shopUser.is_active !== false);
+  const [monthlyStats, setMonthlyStats] = useState<{
+    revenue: number;
+    profit: number;
+    units: number;
+    productMap: Record<string, { units_sold: number; revenue: number; profit: number }>;
+  } | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -84,15 +91,43 @@ const DailySales: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
+        // Fetch products and daily report
         const productsRes = await getAllProducts();
         const allProducts: Product[] = productsRes;
+        
+        // Fetch monthly summary for stats
+        const dateObj = new Date(today);
+        const year = dateObj.getFullYear();
+        const month = dateObj.getMonth() + 1;
+        
+        const [reportRes, monthRes] = await Promise.allSettled([
+          getDailyReport(today),
+          axios.get(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"}/api/reports/monthly?year=${year}&month=${month}`, {
+            headers: { Authorization: `Bearer ${localStorageKey()}` },
+          })
+        ]);
+
         let dailyMap: Record<string, DailyReportProduct> = {};
-        try {
-          const reportRes = await getDailyReport(today);
-          const report: DailyReport = reportRes.data;
+        if (reportRes.status === "fulfilled") {
+          const report: DailyReport = reportRes.value.data;
           if (report?.products)
             dailyMap = Object.fromEntries(report.products.map((p) => [p.product_id, p]));
-        } catch { /* no report yet */ }
+        }
+
+        if (monthRes.status === "fulfilled") {
+          const mData = monthRes.value.data.data;
+          const statsMap: Record<string, any> = {};
+          mData.product_stats?.forEach((p: any) => {
+            statsMap[p.product_id] = p;
+          });
+          
+          setMonthlyStats({
+            revenue: mData.month_total_revenue,
+            profit: mData.month_total_profit,
+            units: mData.month_total_units,
+            productMap: statsMap
+          });
+        }
 
         // Merge and attach is_active for UI logic
         const merged: (DailyReportProduct & { is_active: boolean })[] = allProducts.map((prod) => {
@@ -121,6 +156,20 @@ const DailySales: React.FC = () => {
     };
     fetchData();
   }, [today, refreshFlag]);
+
+  const handleMonthChange = (direction: "prev" | "next") => {
+    const d = new Date(today);
+    d.setDate(1); // avoid month wrapping issues
+    if (direction === "prev") d.setMonth(d.getMonth() - 1);
+    else d.setMonth(d.getMonth() + 1);
+    
+    // Maintain the same day if possible, or clamp
+    const originalDay = new Date(today).getDate();
+    const lastDayNextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(originalDay, lastDayNextMonth));
+    
+    navigate(`?date=${formatDate(d)}`);
+  };
 
   useEffect(() => {
     const loadWorkers = async () => {
@@ -199,86 +248,43 @@ const DailySales: React.FC = () => {
         .scroll-thin::-webkit-scrollbar-thumb:hover { background: #7c3aed; }
       `}</style>
 
-      <div className="max-w-7xl mx-auto px-4 pt-8 space-y-8">
-
+      <div className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-linear-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-200">
-              <ShoppingBag className="h-5 w-5 text-white" />
-            </div>
-            <div>
-
-            {showNextShiftPrompt && user?.role === "owner" && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4">
-                <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl shadow-slate-950/20">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                        <Users className="h-5 w-5" />
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-900">Prepare the next shift</h3>
-                      <p className="mt-1 text-sm text-slate-500">Choose the person who will attend the next shift.</p>
-                    </div>
-                    <button
-                      onClick={() => setShowNextShiftPrompt(false)}
-                      className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                      aria-label="Close next shift prompt"
-                    >
-                      <X className="h-5 cursor-pointer w-5" />
-                    </button>
-                  </div>
-
-                  <div className="mt-6 space-y-3">
-                    <label className="block text-sm font-semibold text-slate-700">Attendee</label>
-                    <select
-                      value={selectedWorkerId}
-                      onChange={(e) => setSelectedWorkerId(e.target.value)}
-                      disabled={isLoadingWorkers}
-                      className="w-full rounded-2xl cursor-pointer border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white disabled:cursor-not-allowed"
-                    >
-                      <option value="">Select person for the next shift</option>
-                      {activeShiftUsers.map((shopUser) => (
-                        <option key={shopUser._id} value={shopUser._id}>
-                          {shopUser.name}{shopUser.phone ? ` (${shopUser.phone})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    {activeShiftUsers.length === 0 && !isLoadingWorkers && (
-                      <p className="text-xs text-amber-600">No active users found. You can continue to the shift page and choose later.</p>
-                    )}
-                  </div>
-
-                  <div className="mt-6 flex gap-3">
-                    <button
-                      onClick={() => setShowNextShiftPrompt(false)}
-                      className="flex-1 cursor-pointer rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                    >
-                      Later
-                    </button>
-                    <button
-                      onClick={handleContinueNextShift}
-                      className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={isLoadingWorkers}
-                    >
-                      Continue
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-linear-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-200 shrink-0">
+                <ShoppingBag className="h-7 w-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-slate-900 tracking-tight truncate">Daily Sales Entry</h1>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                    <CheckCircle className="h-3 w-3" /> Shift Active
+                  </span>
+                  <p className="text-[11px] font-medium text-slate-400 capitalize">{todayLabel}</p>
                 </div>
               </div>
-            )}
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Daily Sales Entry</h1>
-              <p className="text-xs text-slate-400 mt-0.5">{todayLabel}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
-              <CheckCircle className="h-3.5 w-3.5" /> Shift Active
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700">
-              <CalendarDays className="h-3.5 w-3.5" /> {currentMonthLabel}
-            </span>
+
+            <div className="flex items-center justify-between sm:justify-end gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200">
+              <button 
+                onClick={() => handleMonthChange("prev")}
+                className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition text-slate-600"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <div className="flex flex-col items-center px-4">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 leading-none mb-1">Month View</span>
+                <span className="text-sm font-bold text-slate-800">{currentMonthLabel}</span>
+              </div>
+              <button 
+                onClick={() => handleMonthChange("next")}
+                className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition text-slate-600"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -352,11 +358,12 @@ const DailySales: React.FC = () => {
                 <div className="space-y-3">
                   {products.map((row) => {
                     const inputValue = closingStocks[row.product_id] ?? "";
+                    const mStats = monthlyStats?.productMap[row.product_id];
 
                     return (
                       <div
                         key={row.product_id}
-                        className={`rounded-2xl border p-4 shadow-sm ${row.is_active ? "border-slate-200 bg-white" : "border-slate-200 bg-slate-50 opacity-70"}`}
+                        className={`rounded-2xl border p-4 shadow-sm relative overflow-hidden ${row.is_active ? "border-slate-200 bg-white" : "border-slate-200 bg-slate-50 opacity-70"}`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -365,37 +372,51 @@ const DailySales: React.FC = () => {
                               <p className="mt-0.5 text-[11px] font-semibold text-red-500">Inactive product</p>
                             )}
                           </div>
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                          <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${row.is_closing_entered ? "bg-violet-100 text-violet-600" : "bg-emerald-100 text-emerald-600"}`}>
                             {row.is_closing_entered ? "Saved" : "Today"}
                           </span>
                         </div>
 
                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                          <div className="rounded-lg bg-slate-50 px-2.5 py-2">
-                            <p className="text-slate-400">Opening</p>
-                            <p className="font-semibold text-slate-700">{row.opening_stock}</p>
+                          <div className="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Opening</p>
+                            <p className="font-bold text-slate-700">{row.opening_stock}</p>
                           </div>
-                          <div className="rounded-lg bg-slate-50 px-2.5 py-2">
-                            <p className="text-slate-400">Added</p>
-                            <p className="font-semibold text-slate-700">{row.total_added}</p>
+                          <div className="rounded-xl bg-slate-50 border border-slate-100 p-2.5">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Today Sold</p>
+                            <p className="font-bold text-slate-700">{row.units_sold || 0}</p>
                           </div>
                         </div>
 
+                        {/* Monthly Stats on Card */}
+                        {mStats && (
+                          <div className="mt-3 rounded-xl bg-indigo-50/50 border border-indigo-100 p-2.5 flex justify-between items-center">
+                            <div>
+                              <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">Month Rev</p>
+                              <p className="text-xs font-black text-indigo-700">₹{mStats.revenue.toLocaleString("en-IN")}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">Units</p>
+                              <p className="text-xs font-black text-indigo-700">{mStats.units_sold}</p>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="mt-3">
-                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                             Closing stock
                           </p>
 
                           {!row.is_active ? (
-                            <p className="text-xs text-slate-400">Unavailable for inactive product</p>
+                            <p className="text-xs text-slate-400">Unavailable</p>
                           ) : row.is_closing_entered ? (
-                            <div className="inline-flex rounded-lg bg-violet-50 px-3 py-1.5 text-sm font-bold text-violet-700">
+                            <div className="inline-flex w-full justify-center rounded-xl bg-violet-600 px-3 py-2 text-sm font-bold text-white shadow-md shadow-violet-200">
                               {row.closing_stock}
                             </div>
                           ) : (
                             <input
                               type="number"
-                              className="w-full rounded-xl border border-violet-300 bg-white px-3 py-2.5 text-sm font-semibold text-indigo-800 outline-none transition-all focus:border-violet-600 focus:ring-2 focus:ring-violet-200"
+                              className="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-indigo-800 outline-none transition-all focus:border-violet-500 focus:ring-0"
                               value={inputValue}
                               placeholder="Enter qty"
                               onChange={(e) => handleClosingStockChange(row.product_id, e.target.value)}
@@ -448,27 +469,40 @@ const DailySales: React.FC = () => {
                         <th
                           key={dateStr}
                           ref={isToday ? todayThRef : undefined}
+                          onClick={() => !isFuture && navigate(`?date=${dateStr}`)}
                           className={[
-                            "text-xs font-semibold whitespace-nowrap border-r border-slate-200 last:border-r-0",
-                            isToday  ? "bg-linear-to-b from-violet-100 to-violet-50 text-violet-800"
+                            "text-xs font-semibold whitespace-nowrap border-r border-slate-200 last:border-r-0 cursor-pointer transition-colors",
+                            isToday  ? "bg-violet-600 text-white"
                             : isFuture ? "bg-slate-50/60 text-slate-300"
-                            : "bg-slate-50 text-slate-500",
+                            : "bg-slate-50 text-slate-500 hover:bg-slate-100",
                           ].join(" ")}
                           style={{ minWidth: colW, width: colW, textAlign: "center", padding: "8px 4px" }}
                         >
                           <span className={[
                             "inline-flex items-center justify-center rounded-full",
-                            isToday ? "w-7 h-7 bg-violet-600 text-white text-xs font-bold shadow-sm shadow-violet-300"
+                            isToday ? "w-7 h-7 bg-white text-violet-700 text-xs font-bold shadow-md"
                             : "w-6 h-6 text-xs font-semibold",
                           ].join(" ")}>
                             {d.getDate()}
                           </span>
                           {isToday && (
-                            <div className="text-[9px] font-bold text-violet-500 mt-0.5 tracking-widest uppercase">Today</div>
+                            <div className="text-[9px] font-black text-white/80 mt-0.5 tracking-widest uppercase">Today</div>
                           )}
                         </th>
                       );
                     })}
+                    <th
+                      className="text-[10px] font-bold tracking-widest uppercase text-violet-700 bg-violet-50/90 whitespace-nowrap px-4 py-3 border-l border-violet-200"
+                      style={{ minWidth: 100, width: 100 }}
+                    >
+                      Month Rev
+                    </th>
+                    <th
+                      className="text-[10px] font-bold tracking-widest uppercase text-indigo-700 bg-indigo-50/90 whitespace-nowrap px-4 py-3 border-l border-indigo-200"
+                      style={{ minWidth: 80, width: 80 }}
+                    >
+                      Units
+                    </th>
                   </tr>
                 </thead>
 
@@ -556,11 +590,18 @@ const DailySales: React.FC = () => {
                             ) : (
                               <span className="text-xs text-slate-200" style={{ fontFamily: "'DM Mono', monospace" }}>·</span>
                             )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                           </td>
+                         );
+                       })}
+                       {/* Monthly Stats Cells */}
+                       <td className="text-center px-4 py-4 text-xs font-bold text-violet-700 bg-violet-50/30 border-l border-violet-100" style={{ fontFamily: "'DM Mono', monospace" }}>
+                         ₹{monthlyStats?.productMap[row.product_id]?.revenue?.toLocaleString("en-IN") || "—"}
+                       </td>
+                       <td className="text-center px-4 py-4 text-xs font-bold text-indigo-700 bg-indigo-50/30 border-l border-indigo-100" style={{ fontFamily: "'DM Mono', monospace" }}>
+                         {monthlyStats?.productMap[row.product_id]?.units_sold || "—"}
+                       </td>
+                     </tr>
+                    ))}
                 </tbody>
 
                 {products.length > 0 && !isLoading && (
@@ -590,6 +631,16 @@ const DailySales: React.FC = () => {
                           </td>
                         );
                       })}
+                      <td className="text-center px-1 py-3 bg-violet-200/50 border-l border-violet-200">
+                        <span className="text-xs font-black text-violet-800" style={{ fontFamily: "'DM Mono', monospace" }}>
+                          ₹{monthlyStats?.revenue?.toLocaleString("en-IN") || 0}
+                        </span>
+                      </td>
+                      <td className="text-center px-1 py-3 bg-indigo-200/50 border-l border-indigo-200">
+                        <span className="text-xs font-black text-indigo-800" style={{ fontFamily: "'DM Mono', monospace" }}>
+                          {monthlyStats?.units?.toLocaleString("en-IN") || 0}
+                        </span>
+                      </td>
                     </tr>
                   </tfoot>
                 )}
