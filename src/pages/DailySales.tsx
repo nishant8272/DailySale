@@ -9,7 +9,7 @@ import type { Product } from "../types/product.types";
 import type { AuthUser } from "../types/auth.types";
 import { useAuth } from "../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ShoppingBag, CheckCircle, Loader2, Package, Save, CalendarDays, Users, ArrowRight, X, ChevronLeft, ChevronRight, TrendingUp, DollarSign } from "lucide-react";
+import { ShoppingBag, CheckCircle, Loader2, Package, Save, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
 
 const getDaysInMonth = (year: number, month: number) => {
