@@ -190,7 +190,7 @@ export default function AddStockPage() {
               onClick={() => navigate("/dashboard")}
               className="hidden sm:inline-flex px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-bold hover:bg-slate-50"
             >
-              ← Back to Dashboard
+              ← Back to Home
             </button>
           </div>
         </div>
@@ -230,9 +230,8 @@ export default function AddStockPage() {
               {filteredProducts.map((p) => (
                 <div
                   key={p._id}
-                  className={`p-4 space-y-3 transition-all duration-500 ${
-                    successId === p._id ? "bg-green-50/80" : "bg-white"
-                  }`}
+                  className={`p-4 space-y-3 transition-all duration-500 ${successId === p._id ? "bg-green-50/80" : "bg-white"
+                    }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div>
@@ -249,11 +248,10 @@ export default function AddStockPage() {
                   </div>
 
                   <div className="text-xs">
-                    <span className={`px-3 py-1 rounded-xl font-black ${
-                      p.current_stock <= p.low_stock_threshold
+                    <span className={`px-3 py-1 rounded-xl font-black ${p.current_stock <= p.low_stock_threshold
                         ? "bg-red-50 text-red-600 border border-red-100"
                         : "bg-slate-50 text-slate-600 border border-slate-100"
-                    }`}>
+                      }`}>
                       Current Stock: {p.current_stock}
                     </span>
                   </div>
@@ -359,9 +357,8 @@ export default function AddStockPage() {
                   filteredProducts.map((p) => (
                     <tr
                       key={p._id}
-                      className={`transition-all duration-500 ${
-                        successId === p._id ? "bg-green-50/80" : "hover:bg-slate-50/50"
-                      }`}
+                      className={`transition-all duration-500 ${successId === p._id ? "bg-green-50/80" : "hover:bg-slate-50/50"
+                        }`}
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
@@ -383,11 +380,10 @@ export default function AddStockPage() {
                       <td className="px-6 py-4 text-center text-xs font-medium text-slate-400">{p.unit}</td>
 
                       <td className="px-6 py-4 text-center">
-                        <span className={`px-3 py-1 rounded-xl text-xs font-black ${
-                          p.current_stock <= p.low_stock_threshold
+                        <span className={`px-3 py-1 rounded-xl text-xs font-black ${p.current_stock <= p.low_stock_threshold
                             ? "bg-red-50 text-red-600 border border-red-100"
                             : "bg-slate-50 text-slate-600 border border-slate-100"
-                        }`}>
+                          }`}>
                           {p.current_stock}
                         </span>
                       </td>
