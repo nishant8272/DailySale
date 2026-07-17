@@ -38,6 +38,7 @@ export default function Navbar() {
     { name: "Products", path: "/products", icon: "📦", roles: ["owner"] },
     { name: "Add Stock", path: "/add-stock", icon: "➕", roles: ["owner"] }, // ✅ added
     { name: "Reports", path: "/reports", icon: "📈", roles: ["owner"] },
+    { name: "Udharbook", path: "/udharbook", icon: "📖", roles: ["owner", "worker"] },
   ];
 
   const navClasses = isLandingPage
