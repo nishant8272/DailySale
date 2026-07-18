@@ -1,13 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { getAllProducts } from "../services/product.service";
 import { getDailyReport, closeShift } from "../services/shift.service";
-import { fetchShopUsersApi } from "../services/user.service";
 import axios from "axios";
 import { localStorageKey } from "../lib/utils";
 import type { DailyReportProduct, DailyReport } from "../types/dailyreport.types";
 import type { Product } from "../types/product.types";
-import type { AuthUser } from "../types/auth.types";
-import { useAuth } from "../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ShoppingBag, CheckCircle, Loader2, Package, Save, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
@@ -21,30 +18,26 @@ const getDaysInMonth = (year: number, month: number) => {
 const formatDate = (date: Date) => date.toISOString().slice(0, 10);
 
 const PRODUCT_COL_W = 200;
-const DAY_COL_W     = 52;
-const TODAY_COL_W   = 110;
+const DAY_COL_W = 52;
+const TODAY_COL_W = 110;
 
 const DailySales: React.FC = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  // Add is_active to each row for UI logic
   const [products, setProducts] = useState<(DailyReportProduct & { is_active: boolean })[]>([]);
   const [closingStocks, setClosingStocks] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading]         = useState(false);
-  const [workers, setWorkers]             = useState<AuthUser[]>([]);
-  const [showNextShiftPrompt, setShowNextShiftPrompt] = useState(false);
-  const [selectedWorkerId, setSelectedWorkerId]       = useState("");
-  const [isLoadingWorkers, setIsLoadingWorkers]       = useState(false);
-  const [today, setToday]                 = useState<string>("");
-  const [days, setDays]                   = useState<Date[]>([]);
-  const [refreshFlag, setRefreshFlag]     = useState(0);
-  const scrollRef  = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [today, setToday] = useState<string>("");
+  const [days, setDays] = useState<Date[]>([]);
+  const [refreshFlag, setRefreshFlag] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const todayThRef = useRef<HTMLTableCellElement>(null);
-  const [isMobile, setIsMobile]           = useState<boolean>(
+  const [isMobile, setIsMobile] = useState<boolean>(
     typeof window !== "undefined" ? window.innerWidth < 768 : false
   );
   const [mobileViewMode, setMobileViewMode] = useState<"sheet" | "cards">("sheet");
+
   const [monthlyStats, setMonthlyStats] = useState<{
     revenue: number;
     profit: number;
@@ -74,7 +67,7 @@ const DailySales: React.FC = () => {
     if (!today || days.length === 0) return;
     requestAnimationFrame(() => {
       const container = scrollRef.current;
-      const todayTh   = todayThRef.current;
+      const todayTh = todayThRef.current;
       if (!container || !todayTh) return;
       container.scrollLeft = Math.max(0, todayTh.offsetLeft - PRODUCT_COL_W - DAY_COL_W);
     });
@@ -171,27 +164,6 @@ const DailySales: React.FC = () => {
     navigate(`?date=${formatDate(d)}`);
   };
 
-  useEffect(() => {
-    const loadWorkers = async () => {
-      if (user?.role !== "owner") return;
-
-      setIsLoadingWorkers(true);
-      try {
-        const shopUsers = await fetchShopUsersApi();
-        setWorkers(shopUsers);
-        const firstActiveUser = shopUsers.find((shopUser) => shopUser.is_active !== false);
-        setSelectedWorkerId(firstActiveUser?._id || "");
-      } catch {
-        setWorkers([]);
-        setSelectedWorkerId("");
-      } finally {
-        setIsLoadingWorkers(false);
-      }
-    };
-
-    loadWorkers();
-  }, [user?.role]);
-
   const handleClosingStockChange = (product_id: string, value: string) => {
     // Strip leading zeros: "020" → "20", keep empty string as-is
     const cleaned = value === "" ? "" : String(parseInt(value, 10) || 0);
@@ -209,32 +181,18 @@ const DailySales: React.FC = () => {
         }));
       await closeShift(closingArr);
       setRefreshFlag((f) => f + 1);
-      if (user?.role === "owner") {
-        setShowNextShiftPrompt(true);
-      } else {
-        toast.success("Closing stock saved!");
-      }
-    } catch (err){
+      toast.success("Closing stock saved!");
+      // Removed navigate("/shift") to keep user on the page.
+    } catch (err) {
       toast.error("Failed to save closing stock");
     }
     setIsLoading(false);
   };
 
-  const handleContinueNextShift = () => {
-    if (selectedWorkerId) {
-      localStorage.setItem("pending_shift_worker_id", selectedWorkerId);
-    } else {
-      localStorage.removeItem("pending_shift_worker_id");
-    }
-
-    setShowNextShiftPrompt(false);
-    navigate("/shift");
-  };
-
-  const todayDateObj      = today ? new Date(today) : new Date();
-  const todayLabel        = todayDateObj.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const todayDateObj = today ? new Date(today) : new Date();
+  const todayLabel = todayDateObj.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const currentMonthLabel = todayDateObj.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-  const totalClosing      = Object.values(closingStocks).reduce((s, v) => s + (parseInt(v) || 0), 0);
+  const totalClosing = Object.values(closingStocks).reduce((s, v) => s + (parseInt(v) || 0), 0);
   const pendingClosingCount = products.filter((p) => p.is_active && !p.is_closing_entered).length;
 
   return (
@@ -302,22 +260,20 @@ const DailySales: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setMobileViewMode("sheet")}
-                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                      mobileViewMode === "sheet"
-                        ? "bg-violet-100 text-violet-700"
-                        : "text-slate-500 hover:bg-slate-50"
-                    }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${mobileViewMode === "sheet"
+                      ? "bg-violet-100 text-violet-700"
+                      : "text-slate-500 hover:bg-slate-50"
+                      }`}
                   >
                     Sheet
                   </button>
                   <button
                     type="button"
                     onClick={() => setMobileViewMode("cards")}
-                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                      mobileViewMode === "cards"
-                        ? "bg-violet-100 text-violet-700"
-                        : "text-slate-500 hover:bg-slate-50"
-                    }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${mobileViewMode === "cards"
+                      ? "bg-violet-100 text-violet-700"
+                      : "text-slate-500 hover:bg-slate-50"
+                      }`}
                   >
                     Cards
                   </button>
@@ -435,19 +391,19 @@ const DailySales: React.FC = () => {
               className="w-full overflow-x-auto overflow-y-auto rounded-2xl border border-slate-200 shadow-md bg-white scroll-thin"
               style={{ maxHeight: "calc(100vh - 220px)" }}
             >
-            {isLoading && (
-              <div className="sticky top-0 left-0 w-full pointer-events-none z-200" style={{ height: 0 }}>
-                <div className="absolute left-0 w-full flex items-center justify-center" style={{ height: 400, top: 0 }}>
-                  <div className="px-8 py-6 flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white/95 shadow-lg">
-                    <Loader2 className="h-10 w-10 animate-spin text-violet-600" />
-                    <p className="text-sm font-semibold text-slate-700">Loading sales data…</p>
+              {isLoading && (
+                <div className="sticky top-0 left-0 w-full pointer-events-none z-200" style={{ height: 0 }}>
+                  <div className="absolute left-0 w-full flex items-center justify-center" style={{ height: 400, top: 0 }}>
+                    <div className="px-8 py-6 flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white/95 shadow-lg">
+                      <Loader2 className="h-10 w-10 animate-spin text-violet-600" />
+                      <p className="text-sm font-semibold text-slate-700">Loading sales data…</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="relative">
-              {isLoading && <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-100" />}
+              <div className="relative">
+                {isLoading && <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-100" />}
 
               <table className="border-collapse" style={{ tableLayout: "fixed" }}>
                 <thead className="sticky top-0 z-40">
@@ -508,10 +464,10 @@ const DailySales: React.FC = () => {
 
                 <tbody className="divide-y divide-slate-100">
                   {isLoading ? (
-                    <tr><td colSpan={days.length + 1} className="px-4 py-8 text-center text-slate-400 text-sm">Loading…</td></tr>
+                    <tr><td colSpan={days.length + 3} className="px-4 py-8 text-center text-slate-400 text-sm">Loading…</td></tr>
                   ) : products.length === 0 ? (
                     <tr>
-                      <td colSpan={days.length + 1}>
+                      <td colSpan={days.length + 3}>
                         <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50">
                           <Package className="h-12 w-12 text-slate-200 mb-4" />
                           <p className="text-slate-500 font-medium">No products found.</p>
@@ -545,17 +501,17 @@ const DailySales: React.FC = () => {
                       </td>
 
                       {days.map((d) => {
-                        const dateStr  = formatDate(d);
-                        const isToday  = dateStr === today;
-                        const isPast   = dateStr < today;
+                        const dateStr = formatDate(d);
+                        const isToday = dateStr === today;
+                        const isPast = dateStr < today;
                         const isFuture = dateStr > today;
-                        const colW     = isToday ? TODAY_COL_W : DAY_COL_W;
+                        const colW = isToday ? TODAY_COL_W : DAY_COL_W;
                         return (
                           <td
                             key={dateStr}
                             className={[
                               "text-center border-r border-slate-100 last:border-r-0",
-                              isToday  ? "bg-violet-50/40 border-b border-violet-100" : "",
+                              isToday ? "bg-violet-50/40 border-b border-violet-100" : "",
                               isFuture ? "bg-slate-50/20" : "",
                             ].join(" ")}
                             style={{ minWidth: colW, width: colW, padding: "10px 4px" }}

@@ -8,8 +8,9 @@ import {
 } from '../services/shift.service';
 import type { AuthUser } from '../types/auth.types';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Store, Users, Rocket, Lock, Info, X } from 'lucide-react';
 
 export default function ShiftPage() {
   const { user } = useAuth();
@@ -28,7 +29,7 @@ export default function ShiftPage() {
       const res = await getTodayShiftApi();
       setActiveShift(res.data.data);
     } catch (err) {
-      setActiveShift(null); // No shift started today
+      setActiveShift(null);
     } finally {
       setLoading(false);
     }
@@ -41,7 +42,6 @@ export default function ShiftPage() {
       const users = await fetchShopUsersApi();
       setShopUsers(users);
 
-      // Preselect owner/worker from prior handoff if present; else first active user.
       if (!pendingWorkerId) {
         const firstActiveUser = users.find((u) => u.is_active !== false);
         if (firstActiveUser) {
@@ -75,21 +75,16 @@ export default function ShiftPage() {
     } catch (err) {
       toast.dismiss();
       if (axios.isAxiosError(err)) {
-        const message =
-          (err.response?.data as { message?: string } | undefined)?.message ||
-          "Error starting shift. Ensure yesterday's shift is closed.";
-          console.log(message)
+        const message = (err.response?.data as { message?: string } | undefined)?.message || "Error starting shift. Ensure previous shift is closed.";
         toast.error(message);
         return;
       }
-
-      toast.error("Error starting shift. Ensure yesterday's shift is closed.");
+      toast.error("Error starting shift. Ensure previous shift is closed.");
     }
   };
 
   const handleCloseShift = async () => {
     try {
-      // Format the data as your Phase 3 backend expects
       const formattedStocks = Object.keys(closingStocks).map(id => ({
         product_id: id,
         closing_stock: closingStocks[id]
@@ -101,98 +96,114 @@ export default function ShiftPage() {
       setShowCloseModal(false);
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        const message =
-          (err.response?.data as { message?: string } | undefined)?.message ||
-          "Error closing shift. Check your numbers.";
+        const message = (err.response?.data as { message?: string } | undefined)?.message || "Error closing shift. Check your numbers.";
         toast.error(message);
         return;
       }
-
       toast.error("Error closing shift. Check your numbers.");
     }
   };
 
-  if (loading) return <div className="p-10 text-center text-gray-500">Loading Shift Data...</div>;
-
-  if (!activeShift) {
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] p-6 text-center">
-        <div className="bg-blue-50 p-8 rounded-full mb-6">
-          <span className="text-5xl">🏪</span>
-        </div>
-        <h1 className="text-3xl font-bold text-gray-800">Ready to open shop?</h1>
-        <p className="text-gray-500 mt-2 mb-8 max-w-sm">
-          Starting the shift will pull yesterday's closing stock as today's opening stock.
-        </p>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent"></div>
+      </div>
+    );
+  }
 
-        <div className="w-full max-w-xl mb-2 text-left">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Users in this shop</h2>
-
-          {loadingUsers ? (
-            <p className="text-sm text-gray-500">Loading users...</p>
-          ) : shopUsersError ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-3">
-              <p className="text-sm text-red-700">{shopUsersError}</p>
-              <button
-                type="button"
-                onClick={fetchShopUsers}
-                className="mt-3 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
-              >
-                Retry
-              </button>
+  // CASE 1: NO OPEN SHIFT
+  if (!activeShift || activeShift.is_closed) {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-slate-50 via-indigo-50/40 to-slate-50 p-6 flex items-center justify-center" style={{ fontFamily: "'DM Sans', 'Nunito', sans-serif" }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+        `}</style>
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="h-20 w-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
+              <Store size={40} />
             </div>
-          ) : shopUsers.length === 0 ? (
-            <p className="text-sm text-gray-500">No users found for this shop.</p>
-          ) : (
-            <div className="space-y-2 bg-white border border-gray-200 rounded-xl p-3">
-              {shopUsers.map((shopUser) => {
-                const inactive = shopUser.is_active === false;
-                const selected = pendingWorkerId === shopUser._id;
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Ready to open?</h1>
+            <p className="text-slate-500 text-sm">
+              Starting the shift will pull previous closing stock as today's opening stock.
+            </p>
+          </div>
 
-                return (
-                  <label
-                    key={shopUser._id}
-                    className={`flex items-center cursor-pointer justify-between gap-3 p-3 rounded-lg border ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'} ${inactive ? 'opacity-60' : ''}`}
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <input
-                        type="radio"
-                        name="shift_user"
-                        disabled={user?.role !== 'owner' || inactive}
-                        checked={selected}
-                        onChange={() => {
-                          setPendingWorkerId(shopUser._id);
-                          localStorage.setItem('pending_shift_worker_id', shopUser._id);
-                        }}
-                      />
-                      <div className="min-w-0">
-                        <p className="font-medium text-gray-800 truncate">{shopUser.name}</p>
-                        <p className="text-xs text-gray-500 truncate">{shopUser.phone}</p>
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Users size={18} className="text-violet-500" />
+              <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Select Attendee</h2>
+            </div>
+
+            {loadingUsers ? (
+              <p className="text-sm text-slate-500 animate-pulse">Loading users...</p>
+            ) : shopUsersError ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 flex justify-between items-center">
+                <p className="text-sm text-red-700">{shopUsersError}</p>
+                <button onClick={fetchShopUsers} className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700 transition">Retry</button>
+              </div>
+            ) : shopUsers.length === 0 ? (
+              <p className="text-sm text-slate-500">No users found.</p>
+            ) : (
+              <div className="space-y-3">
+                {shopUsers.map((shopUser) => {
+                  const inactive = shopUser.is_active === false;
+                  const selected = pendingWorkerId === shopUser._id;
+
+                  return (
+                    <label
+                      key={shopUser._id}
+                      className={`flex items-center cursor-pointer justify-between gap-4 p-4 rounded-2xl border transition-all ${
+                        selected ? 'border-violet-500 bg-violet-50/50 shadow-sm shadow-violet-100' : 'border-slate-200 hover:border-violet-300'
+                      } ${inactive ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? 'border-violet-500' : 'border-slate-300'}`}>
+                          {selected && <div className="w-2.5 h-2.5 bg-violet-500 rounded-full" />}
+                        </div>
+                        <input
+                          type="radio"
+                          className="hidden"
+                          name="shift_user"
+                          disabled={user?.role !== 'owner' || inactive}
+                          checked={selected}
+                          onChange={() => {
+                            setPendingWorkerId(shopUser._id);
+                            localStorage.setItem('pending_shift_worker_id', shopUser._id);
+                          }}
+                        />
+                        <div className="min-w-0">
+                          <p className={`font-semibold truncate ${selected ? 'text-violet-900' : 'text-slate-700'}`}>{shopUser.name}</p>
+                          <p className="text-xs text-slate-500 truncate">{shopUser.phone}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-xs flex items-center gap-2">
-                      <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">{shopUser.role}</span>
-                      <span className={`px-2 py-1 rounded-full ${inactive ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                        {inactive ? 'Inactive' : 'Active'}
-                      </span>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-
-          {user?.role !== 'owner' && (
-            <p className="text-xs text-gray-500 mt-2">Only owner can select who will attend the shift.</p>
-          )}
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase tracking-wide">{shopUser.role}</span>
+                        {inactive && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600 uppercase">Inactive</span>}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            
+            {user?.role !== 'owner' && (
+              <div className="mt-3 flex gap-2 items-start text-amber-600 bg-amber-50 p-3 rounded-xl text-xs">
+                <Info size={14} className="mt-0.5 shrink-0" />
+                <p>Only the owner can select who will attend the shift.</p>
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
             onClick={handleStartShift}
             disabled={user?.role === 'owner' && !pendingWorkerId}
-            className="mt-6 w-full bg-blue-600 cursor-pointer text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full bg-linear-to-r from-violet-600 to-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:from-violet-700 hover:to-indigo-700 transition-all shadow-lg shadow-violet-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            🚀 Start Shift
+            <Rocket size={20} />
+            Start Shift
           </button>
         </div>
       </div>
@@ -201,76 +212,92 @@ export default function ShiftPage() {
 
   // CASE 2: SHIFT IS OPEN
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Current Shift</h1>
-          <p className="text-sm text-green-600 font-medium">● Active & Recording Sales</p>
-        </div>
-        <button 
-          onClick={() => setShowCloseModal(true)}
-          className="bg-red-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-600"
-        >
-          Close Shift
-        </button>
-      </div>
-
-      <div className="grid gap-4">
-        {activeShift.products.map((p: any) => (
-          <div key={p.product_id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-indigo-50/40 to-slate-50 p-6 pb-20" style={{ fontFamily: "'DM Sans', 'Nunito', sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
+      
+      <div className="max-w-4xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 bg-emerald-100 rounded-2xl flex items-center justify-center">
+              <div className="h-3 w-3 bg-emerald-500 rounded-full animate-pulse" />
+            </div>
             <div>
-              <p className="font-bold text-gray-800">{p.product_name}</p>
-              <p className="text-xs text-gray-500">
-                Opening: {p.opening_stock} | Added: {p.total_added}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-               <button className="text-blue-600 text-sm font-semibold border border-blue-600 px-3 py-1 rounded hover:bg-blue-50">
-                 + Add Stock
-               </button>
+              <h1 className="text-2xl font-bold text-slate-900">Current Shift</h1>
+              <p className="text-sm font-semibold text-emerald-600 tracking-wide uppercase mt-1">Active & Recording Sales</p>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Close Shift Modal */}
-      {showCloseModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Enter Closing Stock</h2>
-            <p className="text-sm text-gray-500 mb-6">Count the items left on the shelf right now.</p>
-            
-            <div className="space-y-4">
-              {activeShift.products.map((p: any) => (
-                <div key={p.product_id} className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-700">{p.product_name}</label>
-                  <input 
-                    type="number"
-                    placeholder="Qty left"
-                    className="border rounded-lg px-3 py-2 w-24 text-center focus:ring-2 focus:ring-blue-500 outline-none"
-                    onChange={(e) => setClosingStocks({...closingStocks, [p.product_id]: Number(e.target.value)})}
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-3 mt-8">
-              <button 
-                onClick={() => setShowCloseModal(false)}
-                className="flex-1 py-3 border rounded-xl font-medium"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleCloseShift}
-                className="flex-1 py-3 bg-black text-white rounded-xl font-bold"
-              >
-                Submit & Close
-              </button>
-            </div>
-          </div>
+          
+          <button 
+            onClick={() => setShowCloseModal(true)}
+            className="bg-rose-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-rose-600 shadow-lg shadow-rose-200 transition-all flex items-center gap-2"
+          >
+            <Lock size={18} />
+            Close Shift
+          </button>
         </div>
-      )}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {activeShift.products.map((p: any) => (
+            <div key={p.product_id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-violet-200 transition-all">
+              <p className="font-bold text-slate-800 text-lg mb-1">{p.product_name}</p>
+              <div className="flex items-center gap-4 text-sm text-slate-500 mt-2">
+                <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                  Opening: <span className="font-bold text-slate-700">{p.opening_stock}</span>
+                </div>
+                <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                  Added: <span className="font-bold text-slate-700">{p.total_added}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Close Shift Modal */}
+        {showCloseModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">Close Shift</h2>
+                  <p className="text-sm text-slate-500 mt-1">Count the items left on the shelf right now.</p>
+                </div>
+                <button onClick={() => setShowCloseModal(false)} className="text-slate-400 hover:text-slate-600 bg-slate-100 p-2 rounded-full">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {activeShift.products.map((p: any) => (
+                  <div key={p.product_id} className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <label className="text-sm font-bold text-slate-700">{p.product_name}</label>
+                    <input 
+                      type="number"
+                      placeholder="Qty left"
+                      className="border border-slate-200 rounded-xl px-4 py-2.5 w-28 text-center font-bold text-violet-700 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-all shadow-sm"
+                      onChange={(e) => setClosingStocks({...closingStocks, [p.product_id]: Number(e.target.value)})}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3 mt-8">
+                <button 
+                  onClick={() => setShowCloseModal(false)}
+                  className="flex-1 py-3.5 border-2 border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleCloseShift}
+                  className="flex-1 py-3.5 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 shadow-lg shadow-slate-900/20 transition-all"
+                >
+                  Submit & Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
