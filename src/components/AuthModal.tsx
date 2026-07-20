@@ -25,13 +25,13 @@ export function AuthModal({ open, onClose, redirectTo = "/dashboard" }: AuthModa
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-100 flex items-start justify-center overflow-y-auto px-3 py-3 sm:items-center sm:px-4 sm:py-6">
+    <div className="fixed inset-0 z-100 flex items-start justify-center overflow-y-auto p-2 sm:items-center sm:p-4">
       <div
         className="absolute inset-0 bg-slate-950/55 backdrop-blur-md"
         onClick={onClose}
       />
 
-      <div className="relative z-101 w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl ...">
+      <div className="relative z-101 w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <button
           type="button"
           onClick={onClose}
@@ -42,7 +42,7 @@ export function AuthModal({ open, onClose, redirectTo = "/dashboard" }: AuthModa
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
-        <div className="max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl p-4 sm:max-h-[calc(100dvh-3rem)] sm:p-8">
+        <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto overflow-x-hidden p-4 sm:max-h-[calc(100dvh-2rem)] sm:p-6">
           <AuthPage mode="modal" onClose={onClose} redirectTo={redirectTo} />
         </div>
       </div>
