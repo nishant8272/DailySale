@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { Menu, X } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -8,6 +9,7 @@ export default function Navbar() {
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isLandingPage = location.pathname === "/";
@@ -34,22 +36,22 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Dashboard", path: "/dashboard", icon: "📊", roles: ["owner", "worker"] },
+    { name: "Shift", path: "/shift", icon: "⏳", roles: ["owner", "worker"] },
     { name: "Daily Sheet", path: "/daily", icon: "📝", roles: ["owner", "worker"] },
     { name: "Products", path: "/products", icon: "📦", roles: ["owner"] },
-    { name: "Add Stock", path: "/add-stock", icon: "➕", roles: ["owner"] }, // ✅ added
+    { name: "Add Stock", path: "/add-stock", icon: "➕", roles: ["owner"] },
     { name: "Reports", path: "/reports", icon: "📈", roles: ["owner"] },
     { name: "Udharbook", path: "/udharbook", icon: "📖", roles: ["owner", "worker"] },
   ];
 
   const navClasses = isLandingPage
-    ? `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-white/80 backdrop-blur-md border-b border-slate-200 h-16" : "bg-transparent h-20"
-      }`
+    ? `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/80 backdrop-blur-md border-b border-slate-200 h-16" : "bg-transparent h-20"
+    }`
     : "sticky top-0 z-50 bg-white border-b border-slate-200 h-16 shadow-sm";
 
   return (
-    <nav className={`${navClasses} flex items-center px-6 md:px-12`}>
-      <div className="max-w-350 w-full mx-auto flex justify-between items-center">
+    <nav className={`${navClasses} flex flex-col px-6 md:px-12 relative`}>
+      <div className="max-w-7xl w-full h-full mx-auto flex justify-between items-center">
 
         {/* LEFT: Logo */}
         <Link to="/dashboard" className="flex items-center gap-2 group">
@@ -70,11 +72,10 @@ export default function Navbar() {
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
-                    location.pathname === link.path
-                      ? "bg-white text-[#1D9E75] shadow-sm"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${location.pathname === link.path
+                    ? "bg-white text-[#1D9E75] shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
+                    }`}
                 >
                   <span>{link.icon}</span>
                   {link.name}
@@ -98,6 +99,14 @@ export default function Navbar() {
             </div>
           ) : (
             <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
+              {/* Mobile Menu Toggle */}
+              <button
+                className="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+
               <div className="text-right hidden sm:block">
                 <p className="text-[11px] font-black text-slate-900 leading-tight">{user.name}</p>
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{user.role}</p>
@@ -116,13 +125,10 @@ export default function Navbar() {
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50">
 
-                    {/* Profile Info */}
                     <div className="px-4 py-3 border-b border-slate-100">
                       <p className="text-xl font-bold text-slate-900">{user.name}</p>
                       <p className="text-[13px] text-slate-600 uppercase tracking-widest">{user.role}</p>
                     </div>
-
-                    {/* Profile Link */}
                     <button
                       onClick={() => { navigate("/profile"); setDropdownOpen(false); }}
                       className="w-full cursor-pointer flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
@@ -134,7 +140,6 @@ export default function Navbar() {
                       Profile
                     </button>
 
-                    {/* Logout */}
                     <button
                       onClick={handleLogout}
                       className="w-full cursor-pointer flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
@@ -153,6 +158,28 @@ export default function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Mobile Menu Dropdown */}
+      {user && mobileMenuOpen && (
+        <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-slate-200 shadow-xl py-4 px-4 flex flex-col gap-2 z-40">
+          {navLinks.map((link) =>
+            link.roles.includes(user.role) && (
+              <Link
+                key={link.path}
+                to={link.path}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`px-4 py-3 text-sm font-bold rounded-xl transition-all flex items-center gap-3 ${location.pathname === link.path
+                  ? "bg-green-50 text-[#1D9E75]"
+                  : "text-slate-600 hover:bg-slate-50"
+                  }`}
+              >
+                <span className="text-lg">{link.icon}</span>
+                {link.name}
+              </Link>
+            )
+          )}
+        </div>
+      )}
     </nav>
   );
 }

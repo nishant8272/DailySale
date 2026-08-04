@@ -1,7 +1,6 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useEffect, useRef, useState } from "react";
 import { getAllProducts } from "../services/product.service";
-import { getDailyReport, closeShift } from "../services/shift.service";
+import { getDailyReport, closeShift, getTodayShift } from "../services/shift.service";
 import axios from "axios";
 import { localStorageKey } from "../lib/utils";
 import type { DailyReportProduct, DailyReport } from "../types/dailyreport.types";
@@ -16,7 +15,12 @@ const getDaysInMonth = (year: number, month: number) => {
   while (date.getMonth() === month) { days.push(new Date(date)); date.setDate(date.getDate() + 1); }
   return days;
 };
-const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+const formatDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const PRODUCT_COL_W = 200;
 const DAY_COL_W = 52;
@@ -46,6 +50,8 @@ const DailySales: React.FC = () => {
     productMap: Record<string, { units_sold: number; revenue: number; profit: number }>;
   } | null>(null);
 
+  const [activeShiftSpan, setActiveShiftSpan] = useState<{ start: string, end: string } | null>(null);
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const selectedDate = params.get("date");
@@ -62,7 +68,6 @@ const DailySales: React.FC = () => {
     setDays(getDaysInMonth(now.getFullYear(), now.getMonth()));
   }, [location.search]);
 
-  // Scroll so 1 previous day + today are visible at the left edge
   useEffect(() => {
     if (!today || days.length === 0) return;
     requestAnimationFrame(() => {
@@ -87,22 +92,36 @@ const DailySales: React.FC = () => {
         // Fetch products and daily report
         const productsRes = await getAllProducts();
         const allProducts: Product[] = productsRes;
-        
+
         // Fetch monthly summary for stats
         const dateObj = new Date(today);
         const year = dateObj.getFullYear();
         const month = dateObj.getMonth() + 1;
-        
-        const [reportRes, monthRes] = await Promise.allSettled([
+
+        const [reportRes, monthRes, activeShiftRes] = await Promise.allSettled([
           getDailyReport(today),
           axios.get(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"}/api/reports/monthly?year=${year}&month=${month}`, {
             headers: { Authorization: `Bearer ${localStorageKey()}` },
-          })
+          }),
+          getTodayShift()
         ]);
 
+        let activeShift = null;
+        let span = null;
+        if (activeShiftRes.status === "fulfilled" && activeShiftRes.value?.data) {
+          activeShift = activeShiftRes.value.data;
+          const realToday = formatDate(new Date());
+          if (!activeShift.is_closed && activeShift.date < realToday) {
+            span = { start: activeShift.date, end: realToday };
+          }
+        }
+        setActiveShiftSpan(span);
+
         let dailyMap: Record<string, DailyReportProduct> = {};
-        if (reportRes.status === "fulfilled") {
-          const report: DailyReport = reportRes.value.data;
+        if (span && today === span.end && activeShift) {
+          dailyMap = Object.fromEntries(activeShift.products.map((p: any) => [p.product_id, p]));
+        } else if (reportRes.status === "fulfilled") {
+          const report: DailyReport = reportRes.value.data || reportRes.value;
           if (report?.products)
             dailyMap = Object.fromEntries(report.products.map((p) => [p.product_id, p]));
         }
@@ -113,7 +132,7 @@ const DailySales: React.FC = () => {
           mData.product_stats?.forEach((p: { product_id: string; units_sold: number; revenue: number; profit: number }) => {
             statsMap[p.product_id] = p;
           });
-          
+
           setMonthlyStats({
             revenue: mData.month_total_revenue,
             profit: mData.month_total_profit,
@@ -152,21 +171,25 @@ const DailySales: React.FC = () => {
 
   const handleMonthChange = (direction: "prev" | "next") => {
     const d = new Date(today);
-    d.setDate(1); // avoid month wrapping issues
+    d.setDate(1);
     if (direction === "prev") d.setMonth(d.getMonth() - 1);
     else d.setMonth(d.getMonth() + 1);
-    
+
     // Maintain the same day if possible, or clamp
     const originalDay = new Date(today).getDate();
     const lastDayNextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
     d.setDate(Math.min(originalDay, lastDayNextMonth));
-    
+
     navigate(`?date=${formatDate(d)}`);
   };
 
   const handleClosingStockChange = (product_id: string, value: string) => {
-    // Strip leading zeros: "020" → "20", keep empty string as-is
-    const cleaned = value === "" ? "" : String(parseInt(value, 10) || 0);
+    if (value === "") {
+      setClosingStocks((prev) => ({ ...prev, [product_id]: "" }));
+      return;
+    }
+    const parsed = parseInt(value, 10) || 0;
+    const cleaned = String(Math.max(0, parsed));
     setClosingStocks((prev) => ({ ...prev, [product_id]: cleaned }));
   };
 
@@ -182,7 +205,7 @@ const DailySales: React.FC = () => {
       await closeShift(closingArr);
       setRefreshFlag((f) => f + 1);
       toast.success("Closing stock saved!");
-      // Removed navigate("/shift") to keep user on the page.
+      navigate("/shift");
     } catch {
       toast.error("Failed to save closing stock");
     }
@@ -226,7 +249,7 @@ const DailySales: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between sm:justify-end gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200">
-              <button 
+              <button
                 onClick={() => handleMonthChange("prev")}
                 className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition text-slate-600"
               >
@@ -236,7 +259,7 @@ const DailySales: React.FC = () => {
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 leading-none mb-1">Month View</span>
                 <span className="text-sm font-bold text-slate-800">{currentMonthLabel}</span>
               </div>
-              <button 
+              <button
                 onClick={() => handleMonthChange("next")}
                 className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition text-slate-600"
               >
@@ -344,7 +367,6 @@ const DailySales: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Monthly Stats on Card */}
                         {mStats && (
                           <div className="mt-3 rounded-xl bg-indigo-50/50 border border-indigo-100 p-2.5 flex justify-between items-center">
                             <div>
@@ -405,203 +427,214 @@ const DailySales: React.FC = () => {
               <div className="relative">
                 {isLoading && <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-100" />}
 
-              <table className="border-collapse" style={{ tableLayout: "fixed" }}>
-                <thead className="sticky top-0 z-40">
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    {/* Sticky product column */}
-                    <th
-                      className="sticky left-0 z-50 text-left text-xs font-semibold tracking-wide whitespace-nowrap px-4 py-3 bg-violet-50/95 text-violet-700 border-r border-slate-200 border-l-2 border-l-violet-500"
-                      style={{ minWidth: PRODUCT_COL_W, width: PRODUCT_COL_W, boxShadow: "2px 0 6px rgba(0,0,0,0.07)" }}
-                    >
-                      Product
-                    </th>
-
-                    {days.map((d) => {
-                      const dateStr  = formatDate(d);
-                      const isToday  = dateStr === today;
-                      const isFuture = dateStr > today;
-                      const colW     = isToday ? TODAY_COL_W : DAY_COL_W;
-                      return (
-                        <th
-                          key={dateStr}
-                          ref={isToday ? todayThRef : undefined}
-                          onClick={() => !isFuture && navigate(`?date=${dateStr}`)}
-                          className={[
-                            "text-xs font-semibold whitespace-nowrap border-r border-slate-200 last:border-r-0 cursor-pointer transition-colors",
-                            isToday  ? "bg-violet-600 text-white"
-                            : isFuture ? "bg-slate-50/60 text-slate-300"
-                            : "bg-slate-50 text-slate-500 hover:bg-slate-100",
-                          ].join(" ")}
-                          style={{ minWidth: colW, width: colW, textAlign: "center", padding: "8px 4px" }}
-                        >
-                          <span className={[
-                            "inline-flex items-center justify-center rounded-full",
-                            isToday ? "w-7 h-7 bg-white text-violet-700 text-xs font-bold shadow-md"
-                            : "w-6 h-6 text-xs font-semibold",
-                          ].join(" ")}>
-                            {d.getDate()}
-                          </span>
-                          {isToday && (
-                            <div className="text-[9px] font-black text-white/80 mt-0.5 tracking-widest uppercase">Today</div>
-                          )}
-                        </th>
-                      );
-                    })}
-                    <th
-                      className="text-[10px] font-bold tracking-widest uppercase text-violet-700 bg-violet-50/90 whitespace-nowrap px-4 py-3 border-l border-violet-200"
-                      style={{ minWidth: 100, width: 100 }}
-                    >
-                      Month Rev
-                    </th>
-                    <th
-                      className="text-[10px] font-bold tracking-widest uppercase text-indigo-700 bg-indigo-50/90 whitespace-nowrap px-4 py-3 border-l border-indigo-200"
-                      style={{ minWidth: 80, width: 80 }}
-                    >
-                      Units
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-100">
-                  {isLoading ? (
-                    <tr><td colSpan={days.length + 3} className="px-4 py-8 text-center text-slate-400 text-sm">Loading…</td></tr>
-                  ) : products.length === 0 ? (
-                    <tr>
-                      <td colSpan={days.length + 3}>
-                        <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50">
-                          <Package className="h-12 w-12 text-slate-200 mb-4" />
-                          <p className="text-slate-500 font-medium">No products found.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : products.map((row, rowIdx) => (
-                    <tr
-                      key={row.product_id}
-                      className={[
-                        "group transition-colors",
-                        rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/30",
-                        "hover:bg-violet-50/25",
-                        !row.is_active ? "opacity-60" : ""
-                      ].join(" ")}
-                    >
-                      {/* Sticky product name */}
-                      <td
-                        className="sticky left-0 z-20 px-4 py-4 text-sm font-semibold border-r border-slate-200 whitespace-nowrap"
-                        style={{
-                          minWidth: PRODUCT_COL_W, width: PRODUCT_COL_W,
-                          background: "rgba(250,249,255,0.97)",
-                          boxShadow: "2px 0 4px rgba(0,0,0,0.04), inset -1px 0 0 rgba(226,232,240,0.55)",
-                          color: !row.is_active ? "#b0b0b0" : undefined,
-                        }}
+                <table className="border-collapse" style={{ tableLayout: "fixed" }}>
+                  <thead className="sticky top-0 z-40">
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      {/* Sticky product column */}
+                      <th
+                        className="sticky left-0 z-50 text-left text-xs font-semibold tracking-wide whitespace-nowrap px-4 py-3 bg-violet-50/95 text-violet-700 border-r border-slate-200 border-l-2 border-l-violet-500"
+                        style={{ minWidth: PRODUCT_COL_W, width: PRODUCT_COL_W, boxShadow: "2px 0 6px rgba(0,0,0,0.07)" }}
                       >
-                        {row.product_name}
-                        {!row.is_active && (
-                          <span className="ml-2 text-xs font-semibold text-red-400">(Inactive)</span>
-                        )}
-                      </td>
+                        Product
+                      </th>
 
-                      {days.map((d) => {
+                      {days.filter(d => {
                         const dateStr = formatDate(d);
+                        if (activeShiftSpan && dateStr >= activeShiftSpan.start && dateStr < activeShiftSpan.end) return false;
+                        return true;
+                      }).map((d) => {
+                        const dateStr = formatDate(d);
+                        const isSpanColumn = activeShiftSpan && dateStr === activeShiftSpan.end;
                         const isToday = dateStr === today;
-                        const isPast = dateStr < today;
                         const isFuture = dateStr > today;
                         const colW = isToday ? TODAY_COL_W : DAY_COL_W;
                         return (
-                          <td
+                          <th
                             key={dateStr}
+                            ref={isToday ? todayThRef : undefined}
+                            onClick={() => !isFuture && navigate(`?date=${dateStr}`)}
                             className={[
-                              "text-center border-r border-slate-100 last:border-r-0",
-                              isToday ? "bg-violet-50/40 border-b border-violet-100" : "",
-                              isFuture ? "bg-slate-50/20" : "",
+                              "text-xs font-semibold whitespace-nowrap border-r border-slate-200 last:border-r-0 cursor-pointer transition-colors",
+                              isToday ? "bg-violet-600 text-white"
+                                : isFuture ? "bg-slate-50/60 text-slate-300"
+                                  : "bg-slate-50 text-slate-500 hover:bg-slate-100",
                             ].join(" ")}
-                            style={{ minWidth: colW, width: colW, padding: "10px 4px" }}
+                            style={{ minWidth: colW, width: colW, textAlign: "center", padding: "8px 4px" }}
                           >
-                            {isToday ? (
-                              !row.is_active ? (
-                                // Inactive: only show backend closing stock, no input
-                                row.is_closing_entered ? (
+                            <span className={[
+                              "inline-flex items-center justify-center rounded-full min-w-[24px] px-1",
+                              isToday ? "h-7 bg-white text-violet-700 text-xs font-bold shadow-md"
+                                : "h-6 text-xs font-semibold",
+                            ].join(" ")}>
+                              {isSpanColumn ? `${parseInt(activeShiftSpan.start.slice(8))}-${d.getDate()}` : d.getDate()}
+                            </span>
+                            {isToday && (
+                              <div className="text-[9px] font-black text-white/80 mt-0.5 tracking-widest uppercase">Today</div>
+                            )}
+                          </th>
+                        );
+                      })}
+                      <th
+                        className="text-[10px] font-bold tracking-widest uppercase text-violet-700 bg-violet-50/90 whitespace-nowrap px-4 py-3 border-l border-violet-200"
+                        style={{ minWidth: 100, width: 100 }}
+                      >
+                        Month Rev
+                      </th>
+                      <th
+                        className="text-[10px] font-bold tracking-widest uppercase text-indigo-700 bg-indigo-50/90 whitespace-nowrap px-4 py-3 border-l border-indigo-200"
+                        style={{ minWidth: 80, width: 80 }}
+                      >
+                        Units
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-100">
+                    {isLoading ? (
+                      <tr><td colSpan={days.length + 3} className="px-4 py-8 text-center text-slate-400 text-sm">Loading…</td></tr>
+                    ) : products.length === 0 ? (
+                      <tr>
+                        <td colSpan={days.length + 3}>
+                          <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50">
+                            <Package className="h-12 w-12 text-slate-200 mb-4" />
+                            <p className="text-slate-500 font-medium">No products found.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : products.map((row, rowIdx) => (
+                      <tr
+                        key={row.product_id}
+                        className={[
+                          "group transition-colors",
+                          rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/30",
+                          "hover:bg-violet-50/25",
+                          !row.is_active ? "opacity-60" : ""
+                        ].join(" ")}
+                      >
+                        <td
+                          className="sticky left-0 z-20 px-4 py-4 text-sm font-semibold border-r border-slate-200 whitespace-nowrap"
+                          style={{
+                            minWidth: PRODUCT_COL_W, width: PRODUCT_COL_W,
+                            background: "rgba(250,249,255,0.97)",
+                            boxShadow: "2px 0 4px rgba(0,0,0,0.04), inset -1px 0 0 rgba(226,232,240,0.55)",
+                            color: !row.is_active ? "#b0b0b0" : undefined,
+                          }}
+                        >
+                          {row.product_name}
+                          {!row.is_active && (
+                            <span className="ml-2 text-xs font-semibold text-red-400">(Inactive)</span>
+                          )}
+                        </td>
+
+                        {days.filter(d => {
+                          const dateStr = formatDate(d);
+                          if (activeShiftSpan && dateStr >= activeShiftSpan.start && dateStr < activeShiftSpan.end) return false;
+                          return true;
+                        }).map((d) => {
+                          const dateStr = formatDate(d);
+                          const isToday = dateStr === today;
+                          const isPast = dateStr < today;
+                          const isFuture = dateStr > today;
+                          const colW = isToday ? TODAY_COL_W : DAY_COL_W;
+                          return (
+                            <td
+                              key={dateStr}
+                              className={[
+                                "text-center border-r border-slate-100 last:border-r-0",
+                                isToday ? "bg-violet-50/40 border-b border-violet-100" : "",
+                                isFuture ? "bg-slate-50/20" : "",
+                              ].join(" ")}
+                              style={{ minWidth: colW, width: colW, padding: "10px 4px" }}
+                            >
+                              {isToday ? (
+                                !row.is_active ? (
+                                  row.is_closing_entered ? (
+                                    <span className="text-xs font-semibold text-violet-700" style={{ fontFamily: "'DM Mono', monospace" }}>
+                                      {row.closing_stock}
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-slate-400 italic">Inactive</span>
+                                  )
+                                ) : row.is_closing_entered ? (
                                   <span className="text-xs font-semibold text-violet-700" style={{ fontFamily: "'DM Mono', monospace" }}>
                                     {row.closing_stock}
                                   </span>
                                 ) : (
-                                  <span className="text-xs text-slate-400 italic">Inactive</span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    className="w-16 px-2 py-2 rounded-xl border border-violet-300 bg-white text-indigo-800 text-xs font-medium text-center outline-none transition-all focus:border-violet-600 focus:ring-2 focus:ring-violet-200 shadow-sm"
+                                    style={{ fontFamily: "'DM Mono', monospace" }}
+                                    value={closingStocks[row.product_id] ?? ""}
+                                    placeholder="0"
+                                    onChange={(e) => handleClosingStockChange(row.product_id, e.target.value)}
+                                    disabled={row.is_closing_entered}
+                                  />
                                 )
-                              ) : row.is_closing_entered ? (
-                                <span className="text-xs font-semibold text-violet-700" style={{ fontFamily: "'DM Mono', monospace" }}>
-                                  {row.closing_stock}
-                                </span>
+                              ) : isPast ? (
+                                <span className="text-xs text-slate-300" style={{ fontFamily: "'DM Mono', monospace" }}>—</span>
                               ) : (
-                                <input
-                                  type="number"
-                                  className="w-16 px-2 py-2 rounded-xl border border-violet-300 bg-white text-indigo-800 text-xs font-medium text-center outline-none transition-all focus:border-violet-600 focus:ring-2 focus:ring-violet-200 shadow-sm"
-                                  style={{ fontFamily: "'DM Mono', monospace" }}
-                                  value={closingStocks[row.product_id] ?? ""}
-                                  placeholder="0"
-                                  onChange={(e) => handleClosingStockChange(row.product_id, e.target.value)}
-                                  disabled={row.is_closing_entered}
-                                />
-                              )
-                            ) : isPast ? (
-                              <span className="text-xs text-slate-300" style={{ fontFamily: "'DM Mono', monospace" }}>—</span>
-                            ) : (
-                              <span className="text-xs text-slate-200" style={{ fontFamily: "'DM Mono', monospace" }}>·</span>
-                            )}
-                           </td>
-                         );
-                       })}
-                       {/* Monthly Stats Cells */}
-                       <td className="text-center px-4 py-4 text-xs font-bold text-violet-700 bg-violet-50/30 border-l border-violet-100" style={{ fontFamily: "'DM Mono', monospace" }}>
-                         ₹{monthlyStats?.productMap[row.product_id]?.revenue?.toLocaleString("en-IN") || "—"}
-                       </td>
-                       <td className="text-center px-4 py-4 text-xs font-bold text-indigo-700 bg-indigo-50/30 border-l border-indigo-100" style={{ fontFamily: "'DM Mono', monospace" }}>
-                         {monthlyStats?.productMap[row.product_id]?.units_sold || "—"}
-                       </td>
-                     </tr>
+                                <span className="text-xs text-slate-200" style={{ fontFamily: "'DM Mono', monospace" }}>·</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="text-center px-4 py-4 text-xs font-bold text-violet-700 bg-violet-50/30 border-l border-violet-100" style={{ fontFamily: "'DM Mono', monospace" }}>
+                          ₹{monthlyStats?.productMap[row.product_id]?.revenue?.toLocaleString("en-IN") || "—"}
+                        </td>
+                        <td className="text-center px-4 py-4 text-xs font-bold text-indigo-700 bg-indigo-50/30 border-l border-indigo-100" style={{ fontFamily: "'DM Mono', monospace" }}>
+                          {monthlyStats?.productMap[row.product_id]?.units_sold || "—"}
+                        </td>
+                      </tr>
                     ))}
-                </tbody>
+                  </tbody>
 
-                {products.length > 0 && !isLoading && (
-                  <tfoot className="sticky bottom-0 z-40">
-                    <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
-                      <td
-                        className="sticky left-0 z-50 bg-slate-100 px-4 py-3 text-xs uppercase tracking-widest text-slate-500 border-r border-slate-200 whitespace-nowrap"
-                        style={{ minWidth: PRODUCT_COL_W, width: PRODUCT_COL_W, boxShadow: "2px 0 4px rgba(0,0,0,0.08)" }}
-                      >
-                        {products.length} Products
-                      </td>
-                      {days.map((d) => {
-                        const dateStr = formatDate(d);
-                        const isToday = dateStr === today;
-                        const colW    = isToday ? TODAY_COL_W : DAY_COL_W;
-                        return (
-                          <td
-                            key={dateStr}
-                            className={["border-r border-slate-200 last:border-r-0 text-center px-1 py-3", isToday ? "bg-violet-100" : "bg-slate-100"].join(" ")}
-                            style={{ minWidth: colW, width: colW }}
-                          >
-                            {isToday && (
-                              <span className="text-xs font-bold text-violet-700" style={{ fontFamily: "'DM Mono', monospace" }}>
-                                {totalClosing}
-                              </span>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="text-center px-1 py-3 bg-violet-200/50 border-l border-violet-200">
-                        <span className="text-xs font-black text-violet-800" style={{ fontFamily: "'DM Mono', monospace" }}>
-                          ₹{monthlyStats?.revenue?.toLocaleString("en-IN") || 0}
-                        </span>
-                      </td>
-                      <td className="text-center px-1 py-3 bg-indigo-200/50 border-l border-indigo-200">
-                        <span className="text-xs font-black text-indigo-800" style={{ fontFamily: "'DM Mono', monospace" }}>
-                          {monthlyStats?.units?.toLocaleString("en-IN") || 0}
-                        </span>
-                      </td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </div>
+                  {products.length > 0 && !isLoading && (
+                    <tfoot className="sticky bottom-0 z-40">
+                      <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
+                        <td
+                          className="sticky left-0 z-50 bg-slate-100 px-4 py-3 text-xs uppercase tracking-widest text-slate-500 border-r border-slate-200 whitespace-nowrap"
+                          style={{ minWidth: PRODUCT_COL_W, width: PRODUCT_COL_W, boxShadow: "2px 0 4px rgba(0,0,0,0.08)" }}
+                        >
+                          {products.length} Products
+                        </td>
+                        {days.filter(d => {
+                          const dateStr = formatDate(d);
+                          if (activeShiftSpan && dateStr >= activeShiftSpan.start && dateStr < activeShiftSpan.end) return false;
+                          return true;
+                        }).map((d) => {
+                          const dateStr = formatDate(d);
+                          const isToday = dateStr === today;
+                          const colW = isToday ? TODAY_COL_W : DAY_COL_W;
+                          return (
+                            <td
+                              key={dateStr}
+                              className={["border-r border-slate-200 last:border-r-0 text-center px-1 py-3", isToday ? "bg-violet-100" : "bg-slate-100"].join(" ")}
+                              style={{ minWidth: colW, width: colW }}
+                            >
+                              {isToday && (
+                                <span className="text-xs font-bold text-violet-700" style={{ fontFamily: "'DM Mono', monospace" }}>
+                                  {totalClosing}
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="text-center px-1 py-3 bg-violet-200/50 border-l border-violet-200">
+                          <span className="text-xs font-black text-violet-800" style={{ fontFamily: "'DM Mono', monospace" }}>
+                            ₹{monthlyStats?.revenue?.toLocaleString("en-IN") || 0}
+                          </span>
+                        </td>
+                        <td className="text-center px-1 py-3 bg-indigo-200/50 border-l border-indigo-200">
+                          <span className="text-xs font-black text-indigo-800" style={{ fontFamily: "'DM Mono', monospace" }}>
+                            {monthlyStats?.units?.toLocaleString("en-IN") || 0}
+                          </span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
             </div>
           )}
 

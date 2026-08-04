@@ -74,6 +74,26 @@ type YearlyReportResponse = {
   }>;
 };
 
+type CustomReportResponse = {
+  period: { from: string; to: string };
+  total_revenue: number;
+  total_profit: number;
+  total_units: number;
+  best_day: { date: string; revenue: number; profit: number; units_sold: number } | null;
+  top_products: Array<{
+    product_name: string;
+    units_sold: number;
+    revenue: number;
+    profit: number;
+  }>;
+  daily_breakdown: Array<{
+    date: string;
+    revenue: number;
+    profit: number;
+    units_sold: number;
+  }>;
+};
+
 const formatDayLabel = (date: string) => {
   const parsed = new Date(`${date}T00:00:00`);
   return parsed.toLocaleDateString("en-IN", {
@@ -297,9 +317,65 @@ const buildYearlyReport = (payload: YearlyReportResponse): NormalizedReport => {
   };
 };
 
-export const fetchReportsByRangeApi = async (range: ReportRange): Promise<NormalizedReport> => {
+const buildCustomReport = (payload: CustomReportResponse): NormalizedReport => {
+  const rows = payload.daily_breakdown.map((row) => ({
+    label: formatShortDayLabel(row.date),
+    revenue: row.revenue,
+    profit: row.profit,
+    units: row.units_sold,
+    hasData: row.revenue > 0 || row.units_sold > 0, // Using basic check since DB doesn't pass has_data flag
+    date: row.date,
+  }));
+
+  const bestDay = payload.best_day
+    ? {
+        label: formatDayLabel(payload.best_day.date),
+        revenue: payload.best_day.revenue,
+      }
+    : calculateBestItem(rows.map((row) => ({ label: row.label, revenue: row.revenue })));
+
+  return {
+    title: "Sales Overview",
+    subtitle: `Custom Range • ${formatDayLabel(payload.period.from)} to ${formatDayLabel(payload.period.to)}`,
+    totalRevenue: payload.total_revenue,
+    totalProfit: payload.total_profit,
+    totalUnits: payload.total_units,
+    bestPeriodLabel: bestDay.label,
+    bestPeriodRevenue: bestDay.revenue,
+    chartLabels: rows.map((row) => row.label),
+    chartRevenue: rows.map((row) => row.revenue),
+    chartProfit: rows.map((row) => row.profit),
+    topProducts: normalizeProducts(
+      payload.top_products.map((product) => ({
+        name: product.product_name,
+        revenue: product.revenue,
+        units: product.units_sold,
+        profit: product.profit,
+      }))
+    ),
+    tableRows: rows,
+    periodLabel: `${formatDayLabel(payload.period.from)} - ${formatDayLabel(payload.period.to)}`,
+  };
+};
+
+export const fetchReportsByRangeApi = async (
+  range: ReportRange,
+  customDates?: { from: string; to: string }
+): Promise<NormalizedReport> => {
   try {
     const headers = { headers: getAuthHeaders() };
+
+    if (range === "custom" && customDates) {
+      const { from, to } = customDates;
+      const response = await axios.get(`${API_BASE_URL}/api/reports/custom?from=${from}&to=${to}`, headers);
+      const payload = response.data?.data as CustomReportResponse;
+
+      if (!payload) {
+        throw new Error("Failed to fetch custom report");
+      }
+
+      return buildCustomReport(payload);
+    }
 
     if (range === "yesterday") {
       const date = getYesterdayDate();

@@ -205,33 +205,37 @@ export default function DashboardPage() {
       : "No shift started";
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="relative space-y-8 animate-in fade-in duration-700 pb-12">
+      {/* Decorative Background Blobs */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full bg-emerald-200/20 blur-[100px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-teal-200/20 blur-[120px]"></div>
+      </div>
+
       {/* TOP SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <p className="text-slate-500 font-medium">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10">
+        <div className="space-y-1">
+          <p className="text-emerald-600 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             {getGreeting()}, {user?.name}
           </p>
-          <h1 className="text-2xl font-bold text-slate-900">{shop?.name}</h1>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">{shop?.name}</h1>
         </div>
 
         <div className="flex items-center gap-3">
           {hasShiftToday ? (
-            <div
-              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${
-                isShiftOpen
-                  ? "border-green-100 bg-green-50 text-green-700"
-                  : "border-slate-200 bg-slate-50 text-slate-600"
-              }`}
-            >
-              <span
-                className={`h-2 w-2 rounded-full ${isShiftOpen ? "bg-green-500 animate-pulse" : "bg-slate-400"}`}
-              />
+            <div className={`flex items-center gap-3 rounded-2xl border px-4 py-2.5 text-sm font-bold shadow-sm backdrop-blur-md ${
+                isShiftOpen ? "border-emerald-200 bg-emerald-50/80 text-emerald-800" : "border-slate-200 bg-white/80 text-slate-600"
+              }`}>
+              <span className={`relative flex h-3 w-3`}>
+                {isShiftOpen && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${isShiftOpen ? "bg-emerald-500" : "bg-slate-400"}`}></span>
+              </span>
               {shiftStatusText}
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-100 rounded-full text-red-600 text-sm font-semibold">
-              <span className="w-2 h-2 bg-red-500 rounded-full" />
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-rose-50/80 backdrop-blur-md border border-rose-200 rounded-2xl text-rose-700 text-sm font-bold shadow-sm">
+              <span className="w-2.5 h-2.5 bg-rose-500 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
               No shift started
             </div>
           )}
@@ -239,68 +243,108 @@ export default function DashboardPage() {
           {!hasShiftToday && (
             <button 
               onClick={openStartShiftModal}
-              className="px-6 py-2 cursor-pointer bg-[#1D9E75] text-white rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-[#168a65] transition-all active:scale-95"
+              className="group relative px-6 py-2.5 cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:-translate-y-0.5 transition-all active:scale-95 overflow-hidden"
             >
-              Start Shift
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+              <span className="relative flex items-center gap-2">
+                Start Shift
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 group-hover:translate-x-1 transition-transform"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </span>
             </button>
           )}
         </div>
       </div>
 
       {/* STATS ROW */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Today's Revenue" value={formatCurrency(data.todayShift?.day_total_revenue || 0)} color="text-[#1D9E75]" />
-        <StatCard title="Today's Profit" value={formatCurrency(data.todayShift?.day_total_profit || 0)} color="text-blue-600" />
-        <StatCard title="Units Sold" value={totalUnits.toString()} color="text-purple-600" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 relative z-10">
+        <StatCard title="Today's Revenue" value={formatCurrency(data.todayShift?.day_total_revenue || 0)} color="text-white" highlight={true} icon="💰" />
+        <StatCard title="Today's Profit" value={formatCurrency(data.todayShift?.day_total_profit || 0)} color="text-slate-800" icon="📈" />
+        <StatCard title="Units Sold" value={totalUnits.toString()} color="text-slate-800" icon="📦" />
         <StatCard 
           title="Low Stock Alerts" 
           value={data.alertCount.toString()} 
-          color={data.alertCount > 0 ? "text-red-600 font-bold" : "text-slate-400"}
+          color={data.alertCount > 0 ? "text-rose-600 font-black" : "text-slate-400"}
           description={data.alertCount > 0 ? "Tap to view items" : "No low stock items"}
           onClick={data.alertCount > 0 ? openLowStockModal : undefined}
+          icon="⚠️"
         />
       </div>
 
       {/* MAIN GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 relative z-10">
         {/* LEFT: Quick Actions */}
-        <div className="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 className="font-bold mb-4 text-slate-800">Quick Actions</h3>
-          <div className="space-y-3">
-            <ActionButton label="Add Product" path="/products" color="bg-green-50 text-green-700" icon={<BoxIcon />} />
-            <ActionButton label="Daily Sheet" path="/daily" color="bg-purple-50 text-purple-700" icon={<ListIcon />} />
-            <ActionButton label="Add Stock" path="/add-stock" color="bg-blue-50 text-blue-700" icon={<PlusIcon />} />
-            <ActionButton label="Reports" path="/reports" color="bg-amber-50 text-amber-700" icon={<ChartIcon />} />
+        <div className="lg:col-span-5 xl:col-span-4 bg-white/80 backdrop-blur-xl p-6 sm:p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-200/50">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <h3 className="text-lg font-black text-slate-800 tracking-tight">Quick Actions</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <ActionButton label="Add Product" path="/products" color="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-emerald-200/50" icon={<BoxIcon />} />
+            <ActionButton label="Daily Sheet" path="/daily" color="bg-purple-50 text-purple-700 hover:bg-purple-100 hover:shadow-purple-200/50" icon={<ListIcon />} />
+            <ActionButton label="Add Stock" path="/add-stock" color="bg-blue-50 text-blue-700 hover:bg-blue-100 hover:shadow-blue-200/50" icon={<PlusIcon />} />
+            <ActionButton label="Reports" path="/reports" color="bg-amber-50 text-amber-700 hover:bg-amber-100 hover:shadow-amber-200/50" icon={<ChartIcon />} />
             {hasShiftToday && isShiftOpen && (
-              <ActionButton label="Close Shift" path="/daily-sheet" color="bg-red-50 text-red-700" icon={<CloseIcon />} />
+              <div className="col-span-2 mt-2">
+                <ActionButton label="Close Shift" path="/daily" color="bg-rose-50 text-rose-700 hover:bg-rose-100 hover:shadow-rose-200/50 border border-rose-100" icon={<CloseIcon />} fullWidth />
+              </div>
             )}
           </div>
         </div>
 
         {/* RIGHT: Top Products */}
-        <div className="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 className="font-bold mb-4 text-slate-800">Top Performing Products</h3>
+        <div className="lg:col-span-7 xl:col-span-8 bg-white/80 backdrop-blur-xl p-6 sm:p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-200/50 flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5"><path d="M5 12l5 5L20 7"/></svg>
+              </div>
+              <h3 className="text-lg font-black text-slate-800 tracking-tight">Top Performing Products</h3>
+            </div>
+            {hasShiftToday && (
+              <span className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-500 uppercase tracking-wider">Today</span>
+            )}
+          </div>
+          
           {data.todayShift ? (
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1">
               {topProducts.map((p, i) => (
-                <div key={p.product_id} className="flex items-center justify-between p-3 rounded-xl border border-slate-50 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${['bg-green-500', 'bg-blue-500', 'bg-amber-500'][i]}`} />
-                    <span className="font-semibold">{p.product_name}</span>
+                <div key={p.product_id} className="group flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-100 hover:bg-emerald-50/30 transition-all duration-300">
+                  <div className="flex items-center gap-4">
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-xl font-bold text-lg shadow-inner ${
+                      i === 0 ? 'bg-amber-100 text-amber-600' : 
+                      i === 1 ? 'bg-slate-200 text-slate-600' : 
+                      'bg-orange-100 text-orange-600'
+                    }`}>
+                      #{i + 1}
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition-colors">{p.product_name}</span>
+                      <p className="text-xs font-semibold text-slate-400 mt-0.5">{p.units_sold} units sold</p>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">{formatCurrency(p.revenue)}</p>
-                    <p className="text-xs text-slate-500">{p.units_sold} units sold</p>
+                    <p className="font-black text-xl text-slate-900">{formatCurrency(p.revenue)}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mt-1">Revenue</p>
                   </div>
                 </div>
               ))}
+              {topProducts.length === 0 && (
+                <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
+                  <p className="font-bold">No sales yet today.</p>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="h-40 flex flex-col items-center justify-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10 mb-2 opacity-50">
-                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-sm font-medium">Start a shift to see today's performance</p>
+            <div className="flex-1 min-h-[250px] flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
+              <div className="w-16 h-16 mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-8 h-8 opacity-40">
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p className="text-base font-bold text-slate-500">No active shift</p>
+              <p className="text-sm font-medium mt-1 opacity-80">Start a shift to track your sales performance.</p>
             </div>
           )}
         </div>
@@ -343,42 +387,71 @@ function StatCard({
   color,
   description,
   onClick,
+  highlight = false,
+  icon,
 }: {
   title: string;
   value: string;
   color: string;
   description?: string;
   onClick?: () => void;
+  highlight?: boolean;
+  icon?: string;
 }) {
   const isClickable = Boolean(onClick);
+  
+  const baseClasses = "relative w-full p-6 sm:p-7 rounded-[2rem] border shadow-xl text-left transition-all duration-300 overflow-hidden group";
+  const bgClasses = highlight 
+    ? "bg-gradient-to-br from-emerald-500 to-teal-600 border-emerald-400 shadow-emerald-500/20" 
+    : "bg-white/90 backdrop-blur-xl border-white shadow-slate-200/50";
+    
+  const hoverClasses = isClickable 
+    ? "cursor-pointer hover:-translate-y-1 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-emerald-500/30" 
+    : "cursor-default hover:-translate-y-0.5 hover:shadow-2xl";
 
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={!isClickable}
-      className={`w-full bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left transition-all ${
-        isClickable
-          ? "cursor-pointer hover:scale-[1.02] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30"
-          : "cursor-default"
-      }`}
+      className={`${baseClasses} ${bgClasses} ${hoverClasses}`}
     >
-      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{title}</p>
-      <p className={`text-xl sm:text-2xl font-black ${color}`}>{value}</p>
-      {description ? <p className="mt-1 text-xs font-medium text-slate-500">{description}</p> : null}
+      {highlight && (
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+      )}
+      <div className="relative z-10 flex flex-col h-full justify-between gap-4">
+        <div className="flex justify-between items-start">
+          <p className={`text-xs font-black uppercase tracking-widest ${highlight ? "text-emerald-50" : "text-slate-400"}`}>
+            {title}
+          </p>
+          {icon && (
+            <div className={`text-xl ${highlight ? "opacity-80" : "opacity-40"}`}>{icon}</div>
+          )}
+        </div>
+        <div>
+          <p className={`text-3xl sm:text-4xl font-black tracking-tight ${color}`}>{value}</p>
+          {description && (
+            <p className={`mt-2 text-xs font-bold ${highlight ? "text-emerald-100" : "text-slate-400"}`}>
+              {description}
+            </p>
+          )}
+        </div>
+      </div>
     </button>
   );
 }
 
-function ActionButton({ label, path, color, icon }: { label: string; path: string; color: string; icon: React.ReactNode }) {
+function ActionButton({ label, path, color, icon, fullWidth = false }: { label: string; path: string; color: string; icon: React.ReactNode, fullWidth?: boolean }) {
   const navigate = useNavigate();
   return (
     <button 
       onClick={() => navigate(path)}
-      className={`w-full flex cursor-pointer items-center gap-4 p-3 rounded-xl font-semibold transition-all hover:shadow-md ${color} active:scale-95`}
+      className={`${fullWidth ? 'w-full flex-row justify-center' : 'w-full flex-col items-start'} flex cursor-pointer gap-3 p-4 rounded-2xl font-bold transition-all shadow-sm active:scale-95 group ${color}`}
     >
-      {icon}
-      {label}
+      <div className={`p-2 rounded-xl bg-white/60 shadow-sm group-hover:scale-110 transition-transform`}>
+        {icon}
+      </div>
+      <span className={fullWidth ? 'text-base' : 'text-sm mt-1'}>{label}</span>
     </button>
   );
 }

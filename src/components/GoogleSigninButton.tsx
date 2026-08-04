@@ -58,8 +58,17 @@ export function GoogleSigninButton({
         return;
       }
 
+      // Calculate width accurately, wait for layout if 0
       const availableWidth = Math.floor(googleButtonRef.current.getBoundingClientRect().width);
-      const buttonWidth = String(Math.max(240, Math.min(320, availableWidth || 320)));
+      if (availableWidth === 0) return;
+      
+      const buttonWidth = String(Math.max(240, Math.min(400, availableWidth)));
+      
+      // Avoid re-rendering if width hasn't changed to prevent flicker/loops
+      if (googleButtonRef.current.dataset.lastWidth === buttonWidth && googleButtonRef.current.hasChildNodes()) {
+        return;
+      }
+      googleButtonRef.current.dataset.lastWidth = buttonWidth;
 
       googleButtonRef.current.innerHTML = "";
       window.google.accounts.id.renderButton(googleButtonRef.current, {
@@ -104,13 +113,26 @@ export function GoogleSigninButton({
 
     document.body.appendChild(script);
 
+    // Use ResizeObserver to reliably get the container width even during animations
+    const resizeObserver = new ResizeObserver(() => {
+      renderButton();
+    });
+    
+    if (googleButtonRef.current) {
+      resizeObserver.observe(googleButtonRef.current);
+    }
     window.addEventListener("resize", renderButton);
 
     return () => {
+      resizeObserver.disconnect();
       window.removeEventListener("resize", renderButton);
       script.remove();
     };
   }, [clientId, onCredential, onError]);
 
-  return <div ref={googleButtonRef} className="block w-full max-w-full" />;
+  return (
+    <div className="flex w-full justify-center">
+      <div ref={googleButtonRef} className="w-full flex justify-center [&>div]:w-full [&>div]:flex [&>div]:justify-center" />
+    </div>
+  );
 }
