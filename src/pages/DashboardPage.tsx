@@ -400,14 +400,14 @@ function StatCard({
 }) {
   const isClickable = Boolean(onClick);
   
-  const baseClasses = "relative w-full p-6 sm:p-7 rounded-[2rem] border shadow-xl text-left transition-all duration-300 overflow-hidden group";
+  const baseClasses = "relative w-full p-4 sm:p-5 rounded-2xl border shadow-md text-left transition-all duration-300 overflow-hidden group";
   const bgClasses = highlight 
     ? "bg-gradient-to-br from-emerald-500 to-teal-600 border-emerald-400 shadow-emerald-500/20" 
     : "bg-white/90 backdrop-blur-xl border-white shadow-slate-200/50";
     
   const hoverClasses = isClickable 
-    ? "cursor-pointer hover:-translate-y-1 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-emerald-500/30" 
-    : "cursor-default hover:-translate-y-0.5 hover:shadow-2xl";
+    ? "cursor-pointer hover:-translate-y-1 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-emerald-500/30" 
+    : "cursor-default hover:-translate-y-0.5 hover:shadow-xl";
 
   return (
     <button
@@ -417,21 +417,21 @@ function StatCard({
       className={`${baseClasses} ${bgClasses} ${hoverClasses}`}
     >
       {highlight && (
-        <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+        <div className="absolute -top-10 -right-10 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
       )}
-      <div className="relative z-10 flex flex-col h-full justify-between gap-4">
+      <div className="relative z-10 flex flex-col h-full justify-between gap-2">
         <div className="flex justify-between items-start">
-          <p className={`text-xs font-black uppercase tracking-widest ${highlight ? "text-emerald-50" : "text-slate-400"}`}>
+          <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${highlight ? "text-emerald-50" : "text-slate-400"}`}>
             {title}
           </p>
           {icon && (
-            <div className={`text-xl ${highlight ? "opacity-80" : "opacity-40"}`}>{icon}</div>
+            <div className={`text-base sm:text-lg ${highlight ? "opacity-80" : "opacity-40"}`}>{icon}</div>
           )}
         </div>
         <div>
-          <p className={`text-3xl sm:text-4xl font-black tracking-tight ${color}`}>{value}</p>
+          <p className={`text-xl sm:text-2xl font-black tracking-tight ${color}`}>{value}</p>
           {description && (
-            <p className={`mt-2 text-xs font-bold ${highlight ? "text-emerald-100" : "text-slate-400"}`}>
+            <p className={`mt-1 text-[10px] font-bold ${highlight ? "text-emerald-100" : "text-slate-400"}`}>
               {description}
             </p>
           )}

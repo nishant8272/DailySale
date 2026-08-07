@@ -69,14 +69,15 @@ const DailySales: React.FC = () => {
   }, [location.search]);
 
   useEffect(() => {
-    if (!today || days.length === 0) return;
+    if (!today || days.length === 0 || isLoading) return;
     requestAnimationFrame(() => {
       const container = scrollRef.current;
       const todayTh = todayThRef.current;
       if (!container || !todayTh) return;
-      container.scrollLeft = Math.max(0, todayTh.offsetLeft - PRODUCT_COL_W - DAY_COL_W);
+      const productWidth = isMobile ? 130 : PRODUCT_COL_W;
+      container.scrollLeft = Math.max(0, todayTh.offsetLeft - productWidth - DAY_COL_W);
     });
-  }, [today, days]);
+  }, [today, days, isLoading, isMobile]);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -206,8 +207,17 @@ const DailySales: React.FC = () => {
       setRefreshFlag((f) => f + 1);
       toast.success("Closing stock saved!");
       navigate("/shift");
-    } catch {
-      toast.error("Failed to save closing stock");
+    } catch (err: any) {
+      let errorMsg = err.response?.data?.message || err.response?.data?.error || "Failed to save closing stock";
+      
+      // Make the error user-friendly for shop workers
+      const stockMatch = errorMsg.match(/Closing stock for "(.*?)" \((\d+)\) cannot exceed opening \+ added stock \((\d+)\)/i);
+      if (stockMatch) {
+        const [, productName, enteredValue, maxAvailable] = stockMatch;
+        errorMsg = `You only have ${maxAvailable} units of "${productName}" available. You cannot enter ${enteredValue} as the closing stock.`;
+      }
+
+      toast.error(errorMsg);
     }
     setIsLoading(false);
   };
@@ -432,8 +442,8 @@ const DailySales: React.FC = () => {
                     <tr className="bg-slate-50 border-b border-slate-200">
                       {/* Sticky product column */}
                       <th
-                        className="sticky left-0 z-50 text-left text-xs font-semibold tracking-wide whitespace-nowrap px-4 py-3 bg-violet-50/95 text-violet-700 border-r border-slate-200 border-l-2 border-l-violet-500"
-                        style={{ minWidth: PRODUCT_COL_W, width: PRODUCT_COL_W, boxShadow: "2px 0 6px rgba(0,0,0,0.07)" }}
+                        className="sticky left-0 z-50 text-left text-xs font-semibold tracking-wide whitespace-normal md:whitespace-nowrap px-4 py-3 bg-violet-50/95 text-violet-700 border-r border-slate-200 border-l-2 border-l-violet-500"
+                        style={{ minWidth: isMobile ? 130 : PRODUCT_COL_W, width: isMobile ? 130 : PRODUCT_COL_W, maxWidth: isMobile ? 130 : PRODUCT_COL_W, boxShadow: "2px 0 6px rgba(0,0,0,0.07)" }}
                       >
                         Product
                       </th>
@@ -441,6 +451,7 @@ const DailySales: React.FC = () => {
                       {days.filter(d => {
                         const dateStr = formatDate(d);
                         if (activeShiftSpan && dateStr >= activeShiftSpan.start && dateStr < activeShiftSpan.end) return false;
+                        if (dateStr > today) return false; // Hide future days
                         return true;
                       }).map((d) => {
                         const dateStr = formatDate(d);
@@ -512,9 +523,9 @@ const DailySales: React.FC = () => {
                         ].join(" ")}
                       >
                         <td
-                          className="sticky left-0 z-20 px-4 py-4 text-sm font-semibold border-r border-slate-200 whitespace-nowrap"
+                          className="sticky left-0 z-20 px-3 py-3 text-sm font-semibold border-r border-slate-200 whitespace-normal md:whitespace-nowrap break-words"
                           style={{
-                            minWidth: PRODUCT_COL_W, width: PRODUCT_COL_W,
+                            minWidth: isMobile ? 130 : PRODUCT_COL_W, width: isMobile ? 130 : PRODUCT_COL_W, maxWidth: isMobile ? 130 : PRODUCT_COL_W,
                             background: "rgba(250,249,255,0.97)",
                             boxShadow: "2px 0 4px rgba(0,0,0,0.04), inset -1px 0 0 rgba(226,232,240,0.55)",
                             color: !row.is_active ? "#b0b0b0" : undefined,
@@ -529,6 +540,7 @@ const DailySales: React.FC = () => {
                         {days.filter(d => {
                           const dateStr = formatDate(d);
                           if (activeShiftSpan && dateStr >= activeShiftSpan.start && dateStr < activeShiftSpan.end) return false;
+                          if (dateStr > today) return false; // Hide future days
                           return true;
                         }).map((d) => {
                           const dateStr = formatDate(d);
@@ -593,14 +605,15 @@ const DailySales: React.FC = () => {
                     <tfoot className="sticky bottom-0 z-40">
                       <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold">
                         <td
-                          className="sticky left-0 z-50 bg-slate-100 px-4 py-3 text-xs uppercase tracking-widest text-slate-500 border-r border-slate-200 whitespace-nowrap"
-                          style={{ minWidth: PRODUCT_COL_W, width: PRODUCT_COL_W, boxShadow: "2px 0 4px rgba(0,0,0,0.08)" }}
+                          className="sticky left-0 z-50 bg-slate-100 px-3 py-3 text-xs uppercase tracking-widest text-slate-500 border-r border-slate-200 whitespace-normal md:whitespace-nowrap break-words"
+                          style={{ minWidth: isMobile ? 130 : PRODUCT_COL_W, width: isMobile ? 130 : PRODUCT_COL_W, maxWidth: isMobile ? 130 : PRODUCT_COL_W, boxShadow: "2px 0 4px rgba(0,0,0,0.08)" }}
                         >
                           {products.length} Products
                         </td>
                         {days.filter(d => {
                           const dateStr = formatDate(d);
                           if (activeShiftSpan && dateStr >= activeShiftSpan.start && dateStr < activeShiftSpan.end) return false;
+                          if (dateStr > today) return false; // Hide future days
                           return true;
                         }).map((d) => {
                           const dateStr = formatDate(d);

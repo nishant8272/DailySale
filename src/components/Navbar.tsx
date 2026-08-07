@@ -47,7 +47,7 @@ export default function Navbar() {
   const navClasses = isLandingPage
     ? `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/80 backdrop-blur-md border-b border-slate-200 h-16" : "bg-transparent h-20"
     }`
-    : "sticky top-0 z-50 bg-white border-b border-slate-200 h-16 shadow-sm";
+    : "sticky top-2 sm:top-4 z-50 bg-white/70 backdrop-blur-xl border border-white rounded-2xl mx-2 sm:mx-6 mb-2 sm:mb-6 h-16 shadow-[0_8px_30px_rgba(0,0,0,0.04)]";
 
   return (
     <nav className={`${navClasses} flex flex-col px-6 md:px-12 relative`}>
@@ -116,7 +116,7 @@ export default function Navbar() {
               <div className="relative" ref={dropdownRef}>
                 <div
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center border-2 border-white shadow-sm font-bold text-[#1D9E75] text-sm uppercase cursor-pointer hover:ring-2 hover:ring-[#1D9E75] transition-all"
+                  className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center border-2 border-white shadow-sm font-bold text-[#1D9E75] text-lg uppercase cursor-pointer hover:ring-2 hover:ring-[#1D9E75] transition-all"
                 >
                   {user.name.charAt(0)}
                 </div>
@@ -160,8 +160,12 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Menu Dropdown */}
-      {user && mobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-slate-200 shadow-xl py-4 px-4 flex flex-col gap-2 z-40">
+      {user && (
+        <div 
+          className={`md:hidden absolute top-[calc(100%+10px)] left-0 w-full bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl py-4 px-4 flex flex-col gap-2 z-40 transition-all duration-300 ease-out origin-top rounded-2xl ${
+            mobileMenuOpen ? "opacity-100 translate-y-0 visible scale-100" : "opacity-0 -translate-y-4 invisible scale-95"
+          }`}
+        >
           {navLinks.map((link) =>
             link.roles.includes(user.role) && (
               <Link

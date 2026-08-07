@@ -101,7 +101,7 @@ export default function ReportsPage() {
         <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-200/20 blur-[120px]"></div>
       </div>
 
-      <section className="rounded-[2rem] border border-white bg-white/90 backdrop-blur-xl p-5 sm:p-6 shadow-xl shadow-slate-200/50 relative z-10">
+      <section className="rounded-[2rem] border border-white bg-white/90 backdrop-blur-xl p-5 sm:p-6 shadow-xl shadow-slate-200/50 relative z-30">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Reports</p>
