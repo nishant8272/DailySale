@@ -1,10 +1,13 @@
-import { type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { GoogleSigninButton } from "../components/GoogleSigninButton";
 import { OnboardingForm } from "../components/OnboardingForm";
 import { UserSummaryCard } from "../components/UserSummaryCard";
 import { useGoogleAuth } from "../hooks/useGoogleAuth";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
+import { fetchMyProfileApi } from "../services/user.service";
+import { loginWithPasswordApi } from "../services/auth.service";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
@@ -15,6 +18,13 @@ type AuthPageProps = {
 };
 
 export function AuthPage({ mode = "page", onClose, redirectTo = "/dashboard" }: AuthPageProps) {
+  const { user, setUser, setShop } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const [loginForm, setLoginForm] = useState({
+    identifier: "",
+    password: "",
+  });
+
   const {
     statusText,
     errorText,
@@ -31,9 +41,49 @@ export function AuthPage({ mode = "page", onClose, redirectTo = "/dashboard" }: 
   const navigate = useNavigate();
   const isModal = mode === "modal";
 
-  const goNext = () => {
+  const goNext = (loggedUser?: any) => {
     if (isModal && onClose) onClose();
-    navigate(redirectTo);
+    const currentUser = loggedUser || user;
+    if (currentUser?.role === "super_admin") {
+      navigate("/super-admin");
+    } else {
+      navigate(redirectTo);
+    }
+  };
+
+  const handlePasswordLogin = async (event: FormEvent) => {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const isEmail = loginForm.identifier.includes("@");
+      const payload: any = {
+        password: loginForm.password,
+      };
+
+      if (isEmail) {
+        payload.email = loginForm.identifier;
+      } else {
+        payload.phone = loginForm.identifier;
+      }
+
+      const result = await loginWithPasswordApi(payload);
+      
+      localStorage.setItem("token", result.token);
+      
+      const profile = await fetchMyProfileApi();
+      setUser(profile.user);
+      setShop(profile.shop);
+      
+      toast.success("Welcome back!");
+      goNext();
+    } catch (error: any) {
+      console.error("Password login error", error);
+      setError(error.message || "Invalid credentials. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleOnboardingSubmit = async (
@@ -106,8 +156,54 @@ export function AuthPage({ mode = "page", onClose, redirectTo = "/dashboard" }: 
               </div>
             )}
 
-            {/* Strict width container for buttons so they perfectly match */}
+            {/* Strict width container for form and buttons */}
             <div className="w-full max-w-[320px] flex flex-col gap-6 mx-auto">
+              
+              {/* Password Login Form */}
+              <form onSubmit={handlePasswordLogin} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email or Phone</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter email or phone..."
+                    value={loginForm.identifier}
+                    onChange={(e) => setLoginForm({ ...loginForm, identifier: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Password</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter password..."
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-2.5 cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 active:scale-95 transition-all text-sm flex items-center justify-center"
+                >
+                  {submitting ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    "Sign In"
+                  )}
+                </button>
+              </form>
+
+              <div className="relative flex items-center justify-center">
+                <div className="absolute w-full border-t border-slate-200"></div>
+                <div className="relative bg-white px-4 text-[10px] font-bold uppercase tracking-widest text-slate-300">
+                  Or sign in with
+                </div>
+              </div>
               
               <div className="relative flex justify-center w-full min-h-[44px] google-btn-container">
                 {loading && (
@@ -131,25 +227,6 @@ export function AuthPage({ mode = "page", onClose, redirectTo = "/dashboard" }: 
                   />
                 </div>
               </div>
-
-              <div className="relative flex items-center justify-center">
-                <div className="absolute w-full border-t border-slate-200"></div>
-                <div className="relative bg-white px-4 text-[10px] font-bold uppercase tracking-widest text-slate-300">
-                  Or
-                </div>
-              </div>
-
-              {/* Worker Login Button */}
-              <button
-                type="button"
-                onClick={() => toast("Worker Login: Coming soon!")}
-                className="group relative w-full overflow-hidden rounded-xl bg-slate-50 border border-slate-200 p-[3px] transition-all duration-300 hover:border-emerald-300 hover:bg-emerald-50 hover:shadow-lg hover:shadow-emerald-200/50 active:scale-95"
-              >
-                <div className="flex h-10 w-full items-center justify-center gap-3 rounded-[9px] bg-white font-bold text-slate-600 transition-colors group-hover:text-emerald-700 shadow-sm">
-                  <span className="text-lg group-hover:scale-110 transition-transform">📱</span>
-                  <span className="text-[13px]">Worker login with Phone</span>
-                </div>
-              </button>
             </div>
 
             <p className="mt-8 text-center text-[11px] text-slate-400 italic font-medium">
@@ -181,7 +258,7 @@ export function AuthPage({ mode = "page", onClose, redirectTo = "/dashboard" }: 
             <UserSummaryCard user={signedUser} />
             <button
               type="button"
-              onClick={goNext}
+              onClick={() => goNext()}
               className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white shadow-lg transition-all hover:bg-emerald-600 hover:shadow-emerald-200 active:scale-95"
             >
               Go to Dashboard

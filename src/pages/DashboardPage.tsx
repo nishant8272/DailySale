@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import type { Alert, DailyEntry, WeeklyReport } from "../api/api.types";
 import type { AuthUser } from "../types/auth.types";
@@ -20,6 +20,12 @@ interface DashboardData {
 
 export default function DashboardPage() {
   const { user, shop } = useAuth();
+  const impersonatedShopId = localStorage.getItem("super_admin_shop_id");
+
+  if (user?.role === "super_admin" && !impersonatedShopId) {
+    return <Navigate to="/super-admin" replace />;
+  }
+
   const pendingShiftStorageKey = "pending_shift_worker_id";
   const [data, setData] = useState<DashboardData>({
     todayShift: null,
@@ -362,7 +368,7 @@ export default function DashboardPage() {
       <StartShiftModal
         open={isStartShiftModalOpen}
         onClose={closeStartShiftModal}
-        currentUserRole={user?.role}
+        currentUserRole={user?.role === "super_admin" ? "owner" : user?.role}
         users={shopUsers}
         loadingUsers={loadingUsers}
         usersError={shopUsersError}

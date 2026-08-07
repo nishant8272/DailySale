@@ -58,3 +58,26 @@ export const onboardGoogleUserApi = async (
     throw new Error("Onboarding failed");
   }
 };
+
+export const loginWithPasswordApi = async (input: {
+  email?: string;
+  phone?: string;
+  password?: string;
+}): Promise<{ user: AuthUser; token: string }> => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/auth/login`, input);
+    const payload = response.data as {
+      user: AuthUser;
+      token: string;
+    };
+    return payload;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const message =
+        (error.response?.data as { message?: string } | undefined)?.message ||
+        "Login failed";
+      throw new Error(message);
+    }
+    throw new Error("Login failed");
+  }
+};
