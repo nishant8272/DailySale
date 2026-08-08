@@ -106,7 +106,7 @@ export default function ShiftPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-[calc(100vh-9rem)] items-center justify-center bg-slate-50">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent"></div>
       </div>
     );
@@ -115,7 +115,7 @@ export default function ShiftPage() {
   // CASE 1: NO OPEN SHIFT
   if (!activeShift || activeShift.is_closed) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 via-indigo-50/40 to-slate-50 p-6 flex items-center justify-center" style={{ fontFamily: "'DM Sans', 'Nunito', sans-serif" }}>
+      <div className="min-h-[calc(100vh-9rem)] bg-linear-to-br from-slate-50 via-indigo-50/40 to-slate-50 p-4 sm:p-6 flex items-center justify-center rounded-3xl" style={{ fontFamily: "'DM Sans', 'Nunito', sans-serif" }}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
         `}</style>
@@ -212,7 +212,7 @@ export default function ShiftPage() {
 
   // CASE 2: SHIFT IS OPEN
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-indigo-50/40 to-slate-50 p-6 pb-20" style={{ fontFamily: "'DM Sans', 'Nunito', sans-serif" }}>
+    <div className="min-h-[calc(100vh-9rem)] bg-linear-to-br from-slate-50 via-indigo-50/40 to-slate-50 p-4 sm:p-6 pb-20 rounded-3xl" style={{ fontFamily: "'DM Sans', 'Nunito', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
       
       <div className="max-w-4xl mx-auto">

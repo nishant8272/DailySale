@@ -202,12 +202,18 @@ export default function UnifiedInventoryPage() {
     Number(formData.current_sell_price) <= Number(formData.current_buy_price);
 
   return (
-    <div className="w-full py-2 space-y-6 animate-in fade-in duration-500">
+    <div className="relative w-full pb-12 space-y-6 animate-in fade-in duration-700">
       
+      {/* Decorative Background Blobs */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-[-5%] right-[-5%] w-[40%] h-[40%] rounded-full bg-emerald-200/20 blur-[100px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-200/20 blur-[120px]"></div>
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-2 relative z-10">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Inventory Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Inventory Management</h1>
           <p className="text-sm sm:text-base text-slate-500 font-medium">Manage and track your shop products</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -230,9 +236,9 @@ export default function UnifiedInventoryPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
 
         {/* LEFT: ADD PRODUCT FORM (4 Columns) */}
-        <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-4">
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm transition-shadow hover:shadow-md">
-            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2 text-lg">
+        <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-4 relative z-10">
+          <div className="bg-white/90 backdrop-blur-xl p-5 sm:p-6 rounded-[2rem] border border-white shadow-xl shadow-slate-200/50 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            <h3 className="font-black text-slate-800 mb-6 flex items-center gap-2 text-lg tracking-tight">
               <div className="p-1.5 bg-green-50 rounded-lg">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5 text-[#1D9E75]"><path d="M12 5v14M5 12h14" /></svg>
               </div>
@@ -294,10 +300,11 @@ export default function UnifiedInventoryPage() {
 
               <button
                 disabled={btnLoading}
-                className="w-full py-3 sm:py-4 bg-[#1D9E75] text-white cursor-pointer rounded-2xl font-black text-sm shadow-lg shadow-green-100 hover:bg-[#168a65] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                className="group relative overflow-hidden w-full py-3 sm:py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white cursor-pointer rounded-2xl font-black text-sm shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:-translate-y-0.5 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {btnLoading && <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>}
-                {btnLoading ? (editingProductId ? "Updating..." : "Adding...") : (editingProductId ? "Update Product" : "Add Product to List")}
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                {btnLoading && <svg className="relative z-10 animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>}
+                <span className="relative z-10">{btnLoading ? (editingProductId ? "Updating..." : "Adding...") : (editingProductId ? "Update Product" : "Add Product to List")}</span>
               </button>
 
               {editingProductId && (
@@ -317,7 +324,7 @@ export default function UnifiedInventoryPage() {
         <div className="lg:col-span-8 space-y-4 sm:space-y-6">
           
           {/* STATS CARDS */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 relative z-10">
             <StatCard label="Total Active" value={products.filter(p => p.is_active !== false).length} sub="Products" />
             <StatCard label="Avg Margin" value={`${stats.avgMargin}%`} color="text-[#1D9E75]" sub="Profitability" />
             <StatCard label="Best Margin" value={`${stats.bestMargin}%`} color="text-[#1D9E75]" sub="Top Item" />
@@ -325,7 +332,7 @@ export default function UnifiedInventoryPage() {
           </div>
 
           {/* SEARCH & FILTERS */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-between relative z-10">
             <div className="relative w-full sm:max-w-md">
               <input
                 type="text"
@@ -339,7 +346,7 @@ export default function UnifiedInventoryPage() {
           </div>
 
           {/* TABLE CONTAINER */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white/90 backdrop-blur-xl rounded-[2rem] border border-white shadow-xl shadow-slate-200/50 overflow-hidden relative z-10">
             {/* Mobile Card View */}
             <div className="sm:hidden space-y-3 p-4">
               {loading ? (
@@ -514,11 +521,11 @@ export default function UnifiedInventoryPage() {
 // Sub-component for Stats to keep code clean
 function StatCard({ label, value, color = "text-slate-800", sub }: any) {
   return (
-    <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm transition-transform hover:-translate-y-1 duration-300">
-      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+    <div className="bg-white/90 backdrop-blur-xl p-5 sm:p-6 rounded-[2rem] border border-white shadow-xl shadow-slate-200/50 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 group">
+      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
       <div className="flex items-baseline gap-1">
-        <p className={`text-2xl sm:text-3xl font-black ${color}`}>{value}</p>
-        <span className="text-xs text-slate-400 font-medium lowercase italic">{sub}</span>
+        <p className={`text-3xl sm:text-4xl font-black tracking-tight ${color}`}>{value}</p>
+        <span className="text-[10px] text-slate-400 font-bold uppercase italic">{sub}</span>
       </div>
     </div>
   );

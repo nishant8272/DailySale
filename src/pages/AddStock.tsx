@@ -167,8 +167,14 @@ export default function AddStockPage() {
   };
 
   return (
-    <>
-      <div className="max-w-350 mx-auto space-y-6 animate-in fade-in duration-500 px-6 md:px-12 py-8">
+    <div className="relative">
+      {/* Decorative Background Blobs */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-[-5%] right-[-5%] w-[40%] h-[40%] rounded-full bg-emerald-200/20 blur-[100px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-200/20 blur-[120px]"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700 px-6 md:px-12 pb-12 pt-8 relative z-10">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -218,7 +224,7 @@ export default function AddStockPage() {
         </div>
 
         {/* Mobile Cards */}
-        <div className="md:hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="md:hidden bg-white/90 backdrop-blur-xl rounded-[2rem] border border-white shadow-xl shadow-slate-200/50 overflow-hidden relative z-10">
           {loading ? (
             <div className="divide-y divide-slate-100">
               {[1, 2, 3].map((i) => (
@@ -320,9 +326,10 @@ export default function AddStockPage() {
                   <button
                     onClick={() => handleStockUpdate(p._id)}
                     disabled={updating === p._id}
-                    className="w-full px-4 py-2 bg-[#1D9E75] text-white text-xs font-black rounded-xl hover:bg-[#168a65] transition-all active:scale-95 disabled:opacity-50"
+                    className="relative overflow-hidden w-full px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-black rounded-xl shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 group"
                   >
-                    {updating === p._id ? "Updating..." : "Update"}
+                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                    <span className="relative z-10">{updating === p._id ? "Updating..." : "Update"}</span>
                   </button>
                 </div>
               ))}
@@ -333,7 +340,7 @@ export default function AddStockPage() {
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="hidden md:block bg-white/90 backdrop-blur-xl rounded-[2rem] border border-white shadow-xl shadow-slate-200/50 overflow-hidden relative z-10">
           <div className="overflow-x-auto">
             <table className="w-full min-w-245 text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] uppercase font-bold tracking-widest">
@@ -448,9 +455,10 @@ export default function AddStockPage() {
                         <button
                           onClick={() => handleStockUpdate(p._id)}
                           disabled={updating === p._id}
-                          className="px-4 py-2 bg-[#1D9E75] text-white text-xs font-black rounded-xl hover:bg-[#168a65] transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                          className="relative overflow-hidden w-full px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-black rounded-xl shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 group"
                         >
-                          {updating === p._id ? "Updating..." : "Update"}
+                          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                          <span className="relative z-10">{updating === p._id ? "Updating..." : "Update"}</span>
                         </button>
                       </td>
                     </tr>
@@ -467,6 +475,6 @@ export default function AddStockPage() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

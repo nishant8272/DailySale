@@ -247,7 +247,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-350 space-y-6 animate-in fade-in duration-300">
+    <div className="mx-auto w-full max-w-7xl space-y-6 animate-in fade-in duration-300">
       <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>

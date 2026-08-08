@@ -244,9 +244,15 @@ export default function UdharbookPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6 animate-in fade-in duration-700 pb-12">
+      {/* Decorative Background Blobs */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-[-5%] right-[-5%] w-[40%] h-[40%] rounded-full bg-emerald-200/20 blur-[100px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-200/20 blur-[120px]"></div>
+      </div>
+
       {/* Header and Add Action */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <span>📖</span> Udharbook (Credit Ledger)
@@ -259,58 +265,61 @@ export default function UdharbookPage() {
         </div>
         <button
           onClick={() => handleOpenAddEntry()}
-          className="bg-[#1D9E75] hover:bg-[#168a65] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center gap-2"
+          className="group relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all hover:-translate-y-0.5 active:scale-95 flex items-center gap-2"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          New Udhar/Payment
+          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+          <span className="relative z-10 flex items-center gap-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Udhar/Payment
+          </span>
         </button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 relative z-10">
         {/* Total Outstanding Card */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
-          <div className="absolute right-0 bottom-0 text-slate-100/40 pointer-events-none translate-x-4 translate-y-4">
+        <div className={`rounded-[2rem] p-6 sm:p-8 border shadow-xl relative overflow-hidden group transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 ${totalOutstanding > 0 ? "bg-gradient-to-br from-rose-500 to-red-600 border-red-400 shadow-red-500/20" : "bg-white/90 backdrop-blur-xl border-white shadow-slate-200/50"}`}>
+          <div className="absolute right-0 bottom-0 text-white/10 pointer-events-none translate-x-4 translate-y-4 group-hover:scale-110 transition-transform duration-500">
             <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
               <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
             </svg>
           </div>
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+          <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${totalOutstanding > 0 ? "text-red-100" : "text-slate-400"}`}>
             Total Outstanding (Pending Udhar)
           </p>
-          <h3 className={`text-4xl font-black tracking-tight ${totalOutstanding > 0 ? "text-red-500" : "text-slate-800"}`}>
+          <h3 className={`text-4xl sm:text-5xl font-black tracking-tight ${totalOutstanding > 0 ? "text-white" : "text-slate-800"}`}>
             ₹ {totalOutstanding.toLocaleString("en-IN")}
           </h3>
-          <p className="text-xs text-slate-500 font-medium mt-2">
+          <p className={`text-xs font-bold mt-3 ${totalOutstanding > 0 ? "text-red-100/80" : "text-slate-500"}`}>
             Net balance sum across all active ledgers
           </p>
         </div>
 
         {/* Debtor count card */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
-          <div className="absolute right-0 bottom-0 text-slate-100/40 pointer-events-none translate-x-4 translate-y-4">
+        <div className="bg-white/90 backdrop-blur-xl rounded-[2rem] p-6 sm:p-8 border border-white shadow-xl shadow-slate-200/50 relative overflow-hidden group transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+          <div className="absolute right-0 bottom-0 text-slate-100 pointer-events-none translate-x-4 translate-y-4 group-hover:scale-110 transition-transform duration-500">
             <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
               <circle cx="9" cy="7" r="4" />
             </svg>
           </div>
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
             Active Accounts
           </p>
-          <h3 className="text-4xl font-black text-slate-800 tracking-tight">
-            {debtorCount} {debtorCount === 1 ? "Customer" : "Customers"}
+          <h3 className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight">
+            {debtorCount} <span className="text-2xl sm:text-3xl text-slate-400">Customer{debtorCount !== 1 ? "s" : ""}</span>
           </h3>
-          <p className="text-xs text-slate-500 font-medium mt-2">
+          <p className="text-xs text-slate-500 font-bold mt-3">
             Total people currently holding an outstanding credit balance
           </p>
         </div>
       </div>
 
       {/* Main Customers List Section */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white/90 backdrop-blur-xl rounded-[2rem] border border-white shadow-xl shadow-slate-200/50 overflow-hidden relative z-10">
         {/* Search Header */}
         <div className="p-5 border-b border-slate-150 bg-slate-50/50 flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">

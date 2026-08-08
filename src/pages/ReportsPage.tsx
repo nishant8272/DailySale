@@ -17,6 +17,7 @@ const RANGE_OPTIONS: Array<{ key: ReportRange; label: string }> = [
   { key: "week", label: "Last 7 days" },
   { key: "month", label: "This month" },
   { key: "year", label: "This year" },
+  { key: "custom", label: "Custom Range" },
 ];
 
 const EMPTY_REPORT: NormalizedReport = {
@@ -38,6 +39,8 @@ const EMPTY_REPORT: NormalizedReport = {
 export default function ReportsPage() {
   const navigate = useNavigate();
   const [range, setRange] = useState<ReportRange>("week");
+  const [customDates, setCustomDates] = useState({ from: "", to: "" });
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const [report, setReport] = useState<NormalizedReport>(EMPTY_REPORT);
   const [loading, setLoading] = useState(true);
@@ -50,7 +53,7 @@ export default function ReportsPage() {
       try {
         setLoading(true);
         setError("");
-        const response = await fetchReportsByRangeApi(range);
+        const response = await fetchReportsByRangeApi(range, range === "custom" ? customDates : undefined);
         setReport(response);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load reports";
@@ -91,8 +94,14 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
+    <div className="relative space-y-6 animate-in fade-in duration-700 pb-12">
+      {/* Decorative Background Blobs */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-[-5%] right-[-5%] w-[40%] h-[40%] rounded-full bg-emerald-200/20 blur-[100px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-200/20 blur-[120px]"></div>
+      </div>
+
+      <section className="rounded-[2rem] border border-white bg-white/90 backdrop-blur-xl p-5 sm:p-6 shadow-xl shadow-slate-200/50 relative z-30">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Reports</p>
@@ -132,11 +141,16 @@ export default function ReportsPage() {
                     key={option.key}
                     type="button"
                     onClick={() => {
-                      setRange(option.key);
+                      if (option.key === "custom") {
+                        setShowDatePicker(true);
+                      } else {
+                        setRange(option.key);
+                        setShowDatePicker(false);
+                      }
                       setIsMenuOpen(false);
                     }}
                     className={`w-full rounded-lg px-3 cursor-pointer py-2 text-left text-sm font-semibold transition ${
-                      range === option.key
+                      range === option.key || (option.key === "custom" && showDatePicker)
                         ? "bg-[#1D9E75]/10 text-[#1D9E75]"
                         : "text-slate-700 hover:bg-slate-50"
                     }`}
@@ -148,22 +162,56 @@ export default function ReportsPage() {
             )}
           </div>
         </div>
+
+        {showDatePicker && (
+          <div className="mt-6 flex flex-wrap items-end gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+            <div>
+              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">From Date</label>
+              <input
+                type="date"
+                className="w-full rounded-xl border-2 border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#1D9E75]"
+                value={customDates.from}
+                onChange={(e) => setCustomDates((prev) => ({ ...prev, from: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">To Date</label>
+              <input
+                type="date"
+                className="w-full rounded-xl border-2 border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#1D9E75]"
+                value={customDates.to}
+                onChange={(e) => setCustomDates((prev) => ({ ...prev, to: e.target.value }))}
+                min={customDates.from}
+              />
+            </div>
+            <button
+              onClick={() => {
+                if (range === "custom") setReloadToken((t) => t + 1);
+                else setRange("custom");
+              }}
+              disabled={!customDates.from || !customDates.to}
+              className="rounded-xl bg-[#1D9E75] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-[#1D9E75]/30 transition hover:bg-[#15805e] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Apply Range
+            </button>
+          </div>
+        )}
       </section>
 
       {error && (
-        <section className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-4">
-          <p>{error}</p>
+        <section className="rounded-[2rem] border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700 flex items-center justify-between gap-4 relative z-10 shadow-sm">
+          <p className="font-bold">{error}</p>
           <button
             type="button"
             onClick={() => setReloadToken((value) => value + 1)}
-            className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-red-700 border border-red-200 hover:bg-red-100"
+            className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-red-700 border border-red-200 hover:bg-red-100 transition-colors shadow-sm cursor-pointer"
           >
             Retry
           </button>
         </section>
       )}
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 relative z-10">
         <StatCard title="Total Revenue" value={formatCurrency(report.totalRevenue)} accent="text-[#1D9E75]" />
         <StatCard
           title="Total Profit"
@@ -180,11 +228,11 @@ export default function ReportsPage() {
         />
       </section>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px] relative z-10">
+        <div className="rounded-[2rem] border border-white bg-white/90 backdrop-blur-xl p-5 sm:p-8 shadow-xl shadow-slate-200/50">
+          <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Revenue vs Profit</h2>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight">Revenue vs Profit</h2>
               <p className="text-sm text-slate-500">Compare performance across the selected time range.</p>
             </div>
             <div className="flex items-center gap-4 text-xs font-semibold text-slate-600">
@@ -223,9 +271,9 @@ export default function ReportsPage() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-bold text-slate-900">Top products</h2>
+        <div className="rounded-[2rem] border border-white bg-white/90 backdrop-blur-xl p-5 sm:p-8 shadow-xl shadow-slate-200/50 flex flex-col">
+          <div className="mb-6">
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Top products</h2>
             <p className="text-sm text-slate-500">Best performing products in the selected range.</p>
           </div>
 
@@ -278,10 +326,10 @@ export default function ReportsPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
-        <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+      <section className="rounded-[2rem] border border-white bg-white/90 backdrop-blur-xl p-5 sm:p-8 shadow-xl shadow-slate-200/50 relative z-10">
+        <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Daily breakdown</h2>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Daily breakdown</h2>
             <p className="text-sm text-slate-500">Review each day or month in the selected period.</p>
           </div>
         </div>
@@ -363,11 +411,18 @@ function StatCard({
   accent: string;
   subValue?: string;
 }) {
+  const isRevenue = title === "Total Revenue";
+  
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</p>
-      <p className={`mt-2 text-2xl font-black ${accent}`}>{value}</p>
-      {subValue && <p className="mt-1 text-sm text-slate-500">{subValue}</p>}
+    <div className={`rounded-[2rem] border p-6 sm:p-7 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl overflow-hidden relative group ${isRevenue ? "bg-gradient-to-br from-emerald-500 to-teal-600 border-emerald-400 shadow-emerald-500/20" : "bg-white/90 backdrop-blur-xl border-white shadow-slate-200/50"}`}>
+      {isRevenue && (
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+      )}
+      <div className="relative z-10">
+        <p className={`text-xs font-bold uppercase tracking-wider ${isRevenue ? "text-emerald-50" : "text-slate-400"}`}>{title}</p>
+        <p className={`mt-2 text-3xl sm:text-4xl font-black tracking-tight ${isRevenue ? "text-white" : accent}`}>{value}</p>
+        {subValue && <p className={`mt-2 text-xs font-bold ${isRevenue ? "text-emerald-100" : "text-slate-400"}`}>{subValue}</p>}
+      </div>
     </div>
   );
 }

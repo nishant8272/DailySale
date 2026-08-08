@@ -1,4 +1,4 @@
-export type ReportRange = "yesterday" | "week" | "month" | "year";
+export type ReportRange = "yesterday" | "week" | "month" | "year" | "custom";
 
 export type ReportTableRow = {
   label: string;
