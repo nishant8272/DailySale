@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Menu, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { fetchShopsDirectoryApi } from "../services/superadmin.service";
 
 export default function Navbar() {
   const { user, logout, setShop } = useAuth();
@@ -15,6 +16,40 @@ export default function Navbar() {
 
   const isLandingPage = location.pathname === "/";
   const impersonatedShopId = localStorage.getItem("super_admin_shop_id");
+  const [shopsList, setShopsList] = useState<{ _id: string; name: string; owner_name: string }[]>([]);
+
+  useEffect(() => {
+    if (user?.role === "super_admin") {
+      fetchShopsDirectoryApi({ page: 1, limit: 100 })
+        .then((res) => {
+          if (res && res.shops) {
+            setShopsList(res.shops);
+          }
+        })
+        .catch((err) => console.error("Error fetching shops for dropdown", err));
+    }
+  }, [user]);
+
+  const handleShopChange = (selectedId: string) => {
+    if (selectedId === "global") {
+      localStorage.removeItem("super_admin_shop_id");
+      setShop(null);
+      toast.success("Returned to Global Console.");
+      window.location.href = "/super-admin";
+    } else {
+      const chosenShop = shopsList.find((s) => s._id === selectedId);
+      if (chosenShop) {
+        localStorage.setItem("super_admin_shop_id", chosenShop._id);
+        setShop(chosenShop);
+        toast.success(`Switched view to ${chosenShop.name}`);
+        if (location.pathname.startsWith("/super-admin")) {
+          window.location.href = "/dashboard";
+        } else {
+          window.location.reload();
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -74,20 +109,6 @@ export default function Navbar() {
 
   return (
     <>
-      {user?.role === "super_admin" && impersonatedShopId && (
-        <div className="sticky top-0 z-50 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-extrabold text-xs sm:text-sm py-2 px-6 flex items-center justify-between shadow-inner">
-          <span className="flex items-center gap-2">
-            <span className="animate-pulse">🛡️</span>
-            Viewing as Owner (Impersonating shop context)
-          </span>
-          <button
-            onClick={handleReturnToGlobal}
-            className="bg-white text-amber-700 font-extrabold px-3 py-1 rounded-xl shadow hover:bg-slate-100 active:scale-95 transition-all cursor-pointer text-xs"
-          >
-            Return to Global Dashboard
-          </button>
-        </div>
-      )}
       <nav className={`${navClasses} flex flex-col px-6 md:px-12 relative`}>
         <div className="max-w-7xl w-full h-full mx-auto flex justify-between items-center">
 
@@ -215,6 +236,44 @@ export default function Navbar() {
           </div>
         )}
       </nav>
+
+      {/* SHOP VIEW DROPDOWN BAR */}
+      {user?.role === "super_admin" && (
+        <div className="bg-slate-50 border-b border-slate-200 px-6 md:px-12 py-2 flex items-center justify-between text-xs">
+          <div className="max-w-7xl w-full mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="font-black text-slate-500 uppercase tracking-widest text-[10px] flex items-center gap-1 select-none">
+                <span>🏬</span> Shop View:
+              </span>
+              <select
+                value={impersonatedShopId || "global"}
+                onChange={(e) => handleShopChange(e.target.value)}
+                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 font-bold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer"
+              >
+                <option value="global">Platform Overview (Global)</option>
+                {shopsList.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name} ({s.owner_name})
+                  </option>
+                ))}
+              </select>
+            </div>
+            {impersonatedShopId && (
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] bg-amber-500/10 text-amber-700 font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider select-none animate-pulse">
+                  Impersonating Shop Context
+                </span>
+                <button
+                  onClick={handleReturnToGlobal}
+                  className="bg-white text-slate-700 border border-slate-200 font-bold px-3 py-1 rounded-lg shadow-sm hover:bg-slate-50 active:scale-95 transition-all cursor-pointer text-[11px]"
+                >
+                  Return to Global Dashboard
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -8,16 +8,18 @@ const getAuthHeaders = () => {
   return { Authorization: `Bearer ${token}` };
 };
 
-export const fetchGlobalStatsApi = async () => {
+export const fetchGlobalStatsApi = async (params?: { startDate?: string; endDate?: string; shop_id?: string }) => {
   const res = await axios.get(`${API_BASE_URL}/api/super-admin/stats`, {
     headers: getAuthHeaders(),
+    params,
   });
   return res.data.data;
 };
 
-export const fetchGlobalChartsApi = async () => {
+export const fetchGlobalChartsApi = async (params?: { startDate?: string; endDate?: string; shop_id?: string }) => {
   const res = await axios.get(`${API_BASE_URL}/api/super-admin/charts`, {
     headers: getAuthHeaders(),
+    params,
   });
   return res.data.data;
 };

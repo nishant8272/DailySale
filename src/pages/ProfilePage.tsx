@@ -60,7 +60,7 @@ export default function ProfilePage() {
     }
   };
 
-  const isOwner = user?.role === "owner";
+  const isOwner = user?.role === "owner" || user?.role === "super_admin";
 
   const filteredWorkers = useMemo(
     () => workers.filter((shopUser) => shopUser.role === "worker"),

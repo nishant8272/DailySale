@@ -45,7 +45,7 @@ export default function UdharbookPage() {
       const activeFilter = filterUserId !== undefined ? filterUserId : selectedUserFilter;
 
       // 1. Fetch full shop customers for totals
-      if (user?.role === "owner") {
+      if (user?.role === "owner" || user?.role === "super_admin") {
         const allRes = await getUdharCustomersApi();
         if (allRes.success) {
           setAllShopCustomers(allRes.data);
@@ -58,7 +58,7 @@ export default function UdharbookPage() {
       if (res.success) {
         setCustomers(res.data);
         // If not owner, set allShopCustomers equal to customers so totals are computed normally
-        if (user?.role !== "owner") {
+        if (user?.role !== "owner" && user?.role !== "super_admin") {
           setAllShopCustomers(res.data);
         }
       } else {
@@ -78,7 +78,7 @@ export default function UdharbookPage() {
 
   // Fetch shop workers for selection if owner
   useEffect(() => {
-    if (user?.role === "owner") {
+    if (user?.role === "owner" || user?.role === "super_admin") {
       (async () => {
         try {
           const list = await fetchShopUsersApi();
@@ -258,7 +258,7 @@ export default function UdharbookPage() {
             <span>📖</span> Udharbook (Credit Ledger)
           </h1>
           <p className="text-sm text-slate-500 font-medium">
-            {user?.role === "owner"
+            {user?.role === "owner" || user?.role === "super_admin"
               ? "Monitor and manage credit and payments for all customers in your shop."
               : "Record and manage credits and payments that you have processed."}
           </p>
@@ -338,7 +338,7 @@ export default function UdharbookPage() {
               />
             </div>
 
-            {user?.role === "owner" && (
+            {(user?.role === "owner" || user?.role === "super_admin") && (
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-500 shrink-0">Ledger:</span>
                 <select
@@ -602,7 +602,7 @@ export default function UdharbookPage() {
                             </span>
 
                             {/* Delete entry button (available to owners or the creator worker) */}
-                            {(user?.role === "owner" || tx.recorded_by?._id === user?._id) && (
+                            {(user?.role === "owner" || user?.role === "super_admin" || tx.recorded_by?._id === user?._id) && (
                               <button
                                 onClick={() => handleDeleteEntry(tx._id)}
                                 className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"

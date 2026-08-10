@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchGlobalStatsApi, fetchGlobalChartsApi } from "../../services/superadmin.service";
+import { fetchGlobalStatsApi, fetchGlobalChartsApi, fetchShopsDirectoryApi } from "../../services/superadmin.service";
 import {
   BarChart,
   Bar,
@@ -35,26 +35,112 @@ export default function GlobalDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [charts, setCharts] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
 
+  const [shopsList, setShopsList] = useState<{ _id: string; name: string; owner_name: string }[]>([]);
+  const [selectedShop, setSelectedShop] = useState<string>("all");
+  const [timeRange, setTimeRange] = useState<string>("30d"); // 30d, today, yesterday, 7d, month, custom
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+
+  const formatDateLocal = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getFilterParams = () => {
+    const params: any = {};
+    if (selectedShop !== "all") {
+      params.shop_id = selectedShop;
+    }
+
+    if (timeRange === "custom") {
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+    } else {
+      const todayDate = new Date();
+      const todayStr = formatDateLocal(todayDate);
+      
+      if (timeRange === "today") {
+        params.startDate = todayStr;
+        params.endDate = todayStr;
+      } else if (timeRange === "yesterday") {
+        const yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterdayStr = formatDateLocal(yesterdayDate);
+        params.startDate = yesterdayStr;
+        params.endDate = yesterdayStr;
+      } else if (timeRange === "7d") {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        params.startDate = formatDateLocal(sevenDaysAgo);
+        params.endDate = todayStr;
+      } else if (timeRange === "30d") {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        params.startDate = formatDateLocal(thirtyDaysAgo);
+        params.endDate = todayStr;
+      } else if (timeRange === "month") {
+        const firstDayOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+        params.startDate = formatDateLocal(firstDayOfMonth);
+        params.endDate = todayStr;
+      }
+    }
+    return params;
+  };
+
+  // Initial load
   useEffect(() => {
-    const loadData = async () => {
+    const init = async () => {
       try {
         setLoading(true);
-        const [statsData, chartsData] = await Promise.all([
-          fetchGlobalStatsApi(),
-          fetchGlobalChartsApi(),
+        const params = getFilterParams();
+        const [statsData, chartsData, shopsData] = await Promise.all([
+          fetchGlobalStatsApi(params),
+          fetchGlobalChartsApi(params),
+          fetchShopsDirectoryApi({ page: 1, limit: 100 }),
         ]);
         setStats(statsData);
         setCharts(chartsData);
+        if (shopsData && shopsData.shops) {
+          setShopsList(shopsData.shops);
+        }
       } catch (error) {
-        console.error("Error loading global admin data", error);
+        console.error("Initial load error", error);
         toast.error("Failed to load platform data.");
       } finally {
         setLoading(false);
       }
     };
-    loadData();
+    init();
   }, []);
+
+  // Filter change load
+  const loadFilteredData = async () => {
+    try {
+      setDataLoading(true);
+      const params = getFilterParams();
+      const [statsData, chartsData] = await Promise.all([
+        fetchGlobalStatsApi(params),
+        fetchGlobalChartsApi(params),
+      ]);
+      setStats(statsData);
+      setCharts(chartsData);
+    } catch (error) {
+      console.error("Error loading filtered global admin data", error);
+      toast.error("Failed to load filtered dashboard metrics.");
+    } finally {
+      setDataLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!loading) {
+      loadFilteredData();
+    }
+  }, [selectedShop, timeRange, startDate, endDate]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -116,6 +202,79 @@ export default function GlobalDashboard() {
         <p className="text-sm text-slate-500 font-medium">
           Monitor multi-tenant metrics, shop performances, and platform-wide inventory health.
         </p>
+      </div>
+
+      {/* Filters and Date Range Picker */}
+      <div className="bg-white/90 backdrop-blur-xl border border-slate-100 p-5 rounded-3xl shadow-sm space-y-4 relative z-10">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Shop Filter */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filter by Shop</label>
+              <select
+                value={selectedShop}
+                onChange={(e) => setSelectedShop(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer"
+              >
+                <option value="all">🏬 All Shops (Platform-wide)</option>
+                {shopsList.map((shop) => (
+                  <option key={shop._id} value={shop._id}>
+                    {shop.name} ({shop.owner_name})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Time Range Filter */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Time Range</label>
+              <select
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer"
+              >
+                <option value="30d">🗓️ Last 30 Days</option>
+                <option value="today">☀️ Today</option>
+                <option value="yesterday">⛅ Yesterday</option>
+                <option value="7d">⚡ Last 7 Days</option>
+                <option value="month">📅 This Month</option>
+                <option value="custom">⚙️ Custom Range...</option>
+              </select>
+            </div>
+
+            {/* Custom Dates Inputs */}
+            {timeRange === "custom" && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Start Date</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">End Date</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Loader indicator when active filters are fetching */}
+          {dataLoading && (
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 animate-pulse">
+              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block animate-ping"></span>
+              Refreshing metrics...
+            </div>
+          )}
+        </div>
       </div>
 
       {/* KEY KPIS OVERVIEW */}

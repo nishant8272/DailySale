@@ -62,7 +62,7 @@ export default function DashboardPage() {
   };
 
   const fetchShopUsers = async () => {
-    if (user?.role !== "owner") {
+    if (user?.role !== "owner" && user?.role !== "super_admin") {
       return;
     }
 
@@ -165,7 +165,7 @@ export default function DashboardPage() {
       toast.loading("Starting shift...");
 
       const selectedWorkerId =
-        user?.role === "owner" && pendingWorkerId ? pendingWorkerId : undefined;
+        (user?.role === "owner" || user?.role === "super_admin") && pendingWorkerId ? pendingWorkerId : undefined;
 
       await startShiftApi(selectedWorkerId);
 
