@@ -1,11 +1,13 @@
-export type Role = "owner" | "worker";
+export type Role = "owner" | "worker" | "super_admin";
 export type AuthProvider = "password" | "google";
 
 export type Shop = {
   _id: string;
   name: string;
   owner_name: string;
+  phone?: string;
   address?: string;
+  created_at?: string;
 };
 
 export type AuthUser = {

@@ -11,8 +11,15 @@ import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import UdharbookPage from "./pages/UdharbookPage";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import SuperAdminRoute from "./components/SuperAdminRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Loader from "./components/loader";
+
+import GlobalDashboard from "./pages/SuperAdmin/GlobalDashboard";
+import ShopDirectory from "./pages/SuperAdmin/ShopDirectory";
+import UserDirectory from "./pages/SuperAdmin/UserDirectory";
+import ActivityLogs from "./pages/SuperAdmin/ActivityLogs";
+import AlertsPage from "./pages/SuperAdmin/AlertsPage";
 
 function AppRoutes() {
   const { loading } = useAuth();
@@ -37,6 +44,15 @@ function AppRoutes() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/udharbook" element={<UdharbookPage />} />
+
+          {/* Super Admin Sub-system */}
+          <Route element={<SuperAdminRoute />}>
+            <Route path="/super-admin" element={<GlobalDashboard />} />
+            <Route path="/super-admin/shops" element={<ShopDirectory />} />
+            <Route path="/super-admin/users" element={<UserDirectory />} />
+            <Route path="/super-admin/logs" element={<ActivityLogs />} />
+            <Route path="/super-admin/alerts" element={<AlertsPage />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<div className="p-10 text-center text-red-500">404 - Not Found</div>} />
